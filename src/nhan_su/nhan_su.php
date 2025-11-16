@@ -108,10 +108,6 @@ try {
     <div class="main-content">
         <div class="header">
             <h1>👥 Quản lý nhân sự</h1>
-            <div class="user-info">
-                <span>Xin chào, <strong><?php echo $_SESSION['username']; ?></strong></span>
-                <a href="../logout.php" class="btn-logout">Đăng xuất</a>
-            </div>
         </div>
 
         <?php if (isset($_GET['msg'])): ?>
@@ -129,151 +125,152 @@ try {
             <div class="table-header">
                 <h2>Danh sách nhân sự (<?php echo count($nhan_su_list); ?>)</h2>
                 <div class="table-actions">
+                    <button class="btn-import" onclick="showImportModal()">📥 Import</button>
                     <button class="btn-primary" onclick="showXuatBaoCaoModal()">📥 Xuất báo cáo</button>
                     <a href="nhan_su_add.php" class="btn-primary">+ Thêm nhân sự</a>
                 </div>
             </div>
+        </div>
 
-            <!-- Hiển thị filter đang áp dụng -->
-            <?php if ($month_added || $birthday_month || ($trang_thai && isset($_GET['from_dashboard'])) || ($date_from && $date_to && isset($_GET['from_dashboard']))): ?>
-            <div style="padding: 15px 20px; background: #f0f4ff; border-bottom: 2px solid #e0e0e0;">
-                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                    <strong style="color: #667eea;">🔍 Đang lọc từ Dashboard:</strong>
-                    <?php if ($month_added): ?>
-                    <span class="filter-badge">📅 Nhân sự mới tháng
-                        <?php echo date('m/Y', strtotime($month_added . '-01')); ?></span>
-                    <?php endif; ?>
-                    <?php if ($birthday_month): ?>
-                    <span class="filter-badge">🎂 Sinh nhật tháng <?php echo $birthday_month; ?></span>
-                    <?php endif; ?>
-                    <?php if ($trang_thai && isset($_GET['from_dashboard'])): ?>
-                    <span class="filter-badge">
-                        <?php 
+        <!-- Hiển thị filter đang áp dụng -->
+        <?php if ($month_added || $birthday_month || ($trang_thai && isset($_GET['from_dashboard'])) || ($date_from && $date_to && isset($_GET['from_dashboard']))): ?>
+        <div style="padding: 15px 20px; background: #f0f4ff; border-bottom: 2px solid #e0e0e0;">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <strong style="color: #667eea;">🔍 Đang lọc từ Dashboard:</strong>
+                <?php if ($month_added): ?>
+                <span class="filter-badge">📅 Nhân sự mới tháng
+                    <?php echo date('m/Y', strtotime($month_added . '-01')); ?></span>
+                <?php endif; ?>
+                <?php if ($birthday_month): ?>
+                <span class="filter-badge">🎂 Sinh nhật tháng <?php echo $birthday_month; ?></span>
+                <?php endif; ?>
+                <?php if ($trang_thai && isset($_GET['from_dashboard'])): ?>
+                <span class="filter-badge">
+                    <?php 
                                     if ($trang_thai == 1) echo '✅ Đang làm việc';
                                     if ($trang_thai == 2) echo '🤰 Đang nghỉ sinh';
                                     if ($trang_thai == 3) echo '❌ Đã nghỉ việc';
                                 ?>
-                    </span>
-                    <?php endif; ?>
-                    <?php if ($date_from && $date_to && isset($_GET['from_dashboard'])): ?>
-                    <span class="filter-badge">📆 Từ <?php echo formatDate($date_from); ?> đến
-                        <?php echo formatDate($date_to); ?></span>
-                    <?php endif; ?>
-                    <a href="nhan_su.php"
-                        style="color: #667eea; text-decoration: none; font-size: 14px; margin-left: 10px;">✖ Xóa bộ
-                        lọc</a>
-                </div>
+                </span>
+                <?php endif; ?>
+                <?php if ($date_from && $date_to && isset($_GET['from_dashboard'])): ?>
+                <span class="filter-badge">📆 Từ <?php echo formatDate($date_from); ?> đến
+                    <?php echo formatDate($date_to); ?></span>
+                <?php endif; ?>
+                <a href="nhan_su.php"
+                    style="color: #667eea; text-decoration: none; font-size: 14px; margin-left: 10px;">✖ Xóa bộ
+                    lọc</a>
             </div>
-            <?php endif; ?>
+        </div>
+        <?php endif; ?>
 
-            <div style="padding: 20px; border-bottom: 2px solid #f0f0f0;">
-                <form method="GET" style="display: flex; gap: 15px; flex-wrap: wrap;">
-                    <input type="text" name="search" class="search-box" placeholder="🔍 Tìm kiếm..."
-                        value="<?php echo $search; ?>">
+        <div style="padding: 20px; border-bottom: 2px solid #f0f0f0;">
+            <form method="GET" style="display: flex; gap: 15px; flex-wrap: wrap;">
+                <input type="text" name="search" class="search-box" placeholder="🔍 Tìm kiếm..."
+                    value="<?php echo $search; ?>">
 
-                    <select name="phong_ban" class="form-control" style="width: auto;">
-                        <option value="">Tất cả phòng ban</option>
-                        <?php foreach ($phong_ban_list as $pb): ?>
-                        <option value="<?php echo $pb['id']; ?>"
-                            <?php echo $phong_ban == $pb['id'] ? 'selected' : ''; ?>>
-                            <?php echo $pb['ten_phong_ban']; ?>
-                        </option>
-                        <?php endforeach; ?>
-                    </select>
+                <select name="phong_ban" class="form-control" style="width: auto;">
+                    <option value="">Tất cả phòng ban</option>
+                    <?php foreach ($phong_ban_list as $pb): ?>
+                    <option value="<?php echo $pb['id']; ?>" <?php echo $phong_ban == $pb['id'] ? 'selected' : ''; ?>>
+                        <?php echo $pb['ten_phong_ban']; ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
 
-                    <select name="chuc_vu" class="form-control" style="width: auto;">
-                        <option value="">Tất cả chức vụ</option>
-                        <?php foreach ($chuc_vu_list as $cv): ?>
-                        <option value="<?php echo $cv['id']; ?>" <?php echo $chuc_vu == $cv['id'] ? 'selected' : ''; ?>>
-                            <?php echo $cv['ten_chuc_vu']; ?>
-                        </option>
-                        <?php endforeach; ?>
-                    </select>
+                <select name="chuc_vu" class="form-control" style="width: auto;">
+                    <option value="">Tất cả chức vụ</option>
+                    <?php foreach ($chuc_vu_list as $cv): ?>
+                    <option value="<?php echo $cv['id']; ?>" <?php echo $chuc_vu == $cv['id'] ? 'selected' : ''; ?>>
+                        <?php echo $cv['ten_chuc_vu']; ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
 
-                    <select name="trang_thai" class="form-control" style="width: auto;">
-                        <option value="">Tất cả trạng thái</option>
-                        <option value="1" <?php echo $trang_thai == '1' ? 'selected' : ''; ?>>Đang làm việc</option>
-                        <option value="2" <?php echo $trang_thai == '2' ? 'selected' : ''; ?>>Đang nghỉ sinh</option>
-                        <option value="3" <?php echo $trang_thai == '3' ? 'selected' : ''; ?>>Đã nghỉ việc</option>
-                    </select>
+                <select name="trang_thai" class="form-control" style="width: auto;">
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="1" <?php echo $trang_thai == '1' ? 'selected' : ''; ?>>Đang làm việc</option>
+                    <option value="2" <?php echo $trang_thai == '2' ? 'selected' : ''; ?>>Đang nghỉ sinh</option>
+                    <option value="3" <?php echo $trang_thai == '3' ? 'selected' : ''; ?>>Đã nghỉ việc</option>
+                </select>
 
-                    <button type="submit" class="btn-primary">🔍 Tìm kiếm</button>
-                    <a href="nhan_su.php" class="btn-secondary">↻ Đặt lại</a>
-                </form>
-            </div>
+                <button type="submit" class="btn-primary">🔍 Tìm kiếm</button>
+                <a href="nhan_su.php" class="btn-secondary">↻ Đặt lại</a>
+            </form>
+        </div>
 
-            <table>
-                <thead>
-                    <tr>
-                        <th>Mã NV</th>
-                        <th>Hình ảnh</th>
-                        <th>Họ và tên</th>
-                        <th>Chức vụ</th>
-                        <th>Phòng ban</th>
-                        <th>Thông tin liên hệ</th>
-                        <th>Trạng thái</th>
-                        <th>Thao tác</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if (empty($nhan_su_list)): ?>
-                    <tr>
-                        <td colspan="8" style="text-align: center; padding: 40px;">
-                            <div style="font-size: 48px; margin-bottom: 15px;">📭</div>
-                            <div style="color: #666;">Chưa có nhân sự nào</div>
-                        </td>
-                    </tr>
-                    <?php else: ?>
-                    <?php foreach ($nhan_su_list as $ns): ?>
-                    <tr>
-                        <td><strong><?php echo $ns['ma_nhan_vien']; ?></strong></td>
-                        <td>
-                            <?php if ($ns['anh_dai_dien']): ?>
-                            <img src="<?php echo $ns['anh_dai_dien']; ?>" alt="Avatar"
-                                style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
-                            <?php else: ?>
-                            <div
-                                style="width: 40px; height: 40px; border-radius: 50%; background: #e0e0e0; display: flex; align-items: center; justify-content: center;">
-                                👤</div>
-                            <?php endif; ?>
-                        </td>
-                        <td>
-                            <div><strong><?php echo $ns['ho_ten']; ?></strong></div>
-                            <div style="font-size: 12px; color: #666;"><?php echo $ns['gioi_tinh']; ?></div>
-                        </td>
-                        <td><?php echo $ns['ten_chuc_vu'] ?? '-'; ?></td>
-                        <td><?php echo $ns['ten_phong_ban'] ?? '-'; ?></td>
-                        <td>
-                            <div style="font-size: 13px;">📧 <?php echo $ns['email'] ?? '-'; ?></div>
-                            <div style="font-size: 13px; margin-top: 4px;">📱 <?php echo $ns['so_dien_thoai'] ?? '-'; ?>
-                            </div>
-                        </td>
-                        <td>
-                            <?php
+        <table>
+            <thead>
+                <tr>
+                    <th>Mã NV</th>
+                    <th>Hình ảnh</th>
+                    <th>Họ và tên</th>
+                    <th>Chức vụ</th>
+                    <th>Phòng ban</th>
+                    <th>Thông tin liên hệ</th>
+                    <th>Trạng thái</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if (empty($nhan_su_list)): ?>
+                <tr>
+                    <td colspan="8" style="text-align: center; padding: 40px;">
+                        <div style="font-size: 48px; margin-bottom: 15px;">📭</div>
+                        <div style="color: #666;">Chưa có nhân sự nào</div>
+                    </td>
+                </tr>
+                <?php else: ?>
+                <?php foreach ($nhan_su_list as $ns): ?>
+                <tr>
+                    <td><strong><?php echo $ns['ma_nhan_vien']; ?></strong></td>
+                    <td>
+                        <?php if ($ns['anh_dai_dien']): ?>
+                        <img src="<?php echo $ns['anh_dai_dien']; ?>" alt="Avatar"
+                            style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+                        <?php else: ?>
+                        <div
+                            style="width: 40px; height: 40px; border-radius: 50%; background: #e0e0e0; display: flex; align-items: center; justify-content: center;">
+                            👤</div>
+                        <?php endif; ?>
+                    </td>
+                    <td>
+                        <div><strong><?php echo $ns['ho_ten']; ?></strong></div>
+                        <div style="font-size: 12px; color: #666;"><?php echo $ns['gioi_tinh']; ?></div>
+                    </td>
+                    <td><?php echo $ns['ten_chuc_vu'] ?? '-'; ?></td>
+                    <td><?php echo $ns['ten_phong_ban'] ?? '-'; ?></td>
+                    <td>
+                        <div style="font-size: 13px;">📧 <?php echo $ns['email'] ?? '-'; ?></div>
+                        <div style="font-size: 13px; margin-top: 4px;">📱 <?php echo $ns['so_dien_thoai'] ?? '-'; ?>
+                        </div>
+                    </td>
+                    <td>
+                        <?php
                                     $badge_class = 'badge-success';
                                     if ($ns['trang_thai_id'] == 2) $badge_class = 'badge-warning';
                                     if ($ns['trang_thai_id'] == 3) $badge_class = 'badge-danger';
                                     ?>
-                            <span class="badge <?php echo $badge_class; ?>">
-                                <?php echo $ns['ten_trang_thai']; ?>
-                            </span>
-                        </td>
-                        <td>
-                            <div class="action-buttons">
-                                <a href="nhan_su_detail.php?id=<?php echo $ns['id']; ?>" class="btn-icon btn-view"
-                                    title="Xem">👁️</a>
-                                <a href="nhan_su_edit.php?id=<?php echo $ns['id']; ?>" class="btn-icon btn-edit"
-                                    title="Sửa">✏️</a>
-                                <button onclick="deleteNhanSu(<?php echo $ns['id']; ?>)" class="btn-icon btn-delete"
-                                    title="Xóa">🗑️</button>
-                            </div>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
+                        <span class="badge <?php echo $badge_class; ?>">
+                            <?php echo $ns['ten_trang_thai']; ?>
+                        </span>
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <a href="nhan_su_detail.php?id=<?php echo $ns['id']; ?>" class="btn-icon btn-view"
+                                title="Xem">👁️</a>
+                            <a href="nhan_su_edit.php?id=<?php echo $ns['id']; ?>" class="btn-icon btn-edit"
+                                title="Sửa">✏️</a>
+                            <button onclick="deleteNhanSu(<?php echo $ns['id']; ?>)" class="btn-icon btn-delete"
+                                title="Xóa">🗑️</button>
+                        </div>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
     </div>
 
     <!-- Modal Xuất báo cáo -->
@@ -297,6 +294,41 @@ try {
                 <button class="btn-secondary" onclick="closeXuatBaoCaoModal()">Đóng</button>
                 <button class="btn-primary" onclick="xuatBaoCao()">Đăng nhập</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Modal Import -->
+    <div id="importModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>📥 Import nhân sự từ file</h2>
+                <button class="btn-close" onclick="closeImportModal()">×</button>
+            </div>
+            <form id="importForm" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Chọn file CSV</label>
+                        <input type="file" name="import_file" id="import_file" class="form-control" accept=".csv"
+                            required>
+                        <small style="color: #666; display: block; margin-top: 5px;">
+                            ✓ Chỉ hỗ trợ file CSV<br>
+                            ✓ Định dạng: ma_nhan_vien, ho_ten, ngay_sinh, gioi_tinh, so_dien_thoai, email, dia_chi,
+                            anh_dai_dien, chuc_vu, phong_ban, ngay_vao_lam, ngay_nghi_viec, loai_hop_dong, muc_luong,
+                            trinh_do_hoc_van<br>
+                            ✓ Ngày tháng: YYYY-MM-DD (VD: 2024-01-15)
+                        </small>
+                    </div>
+
+                    <div id="importResult" style="display: none; padding: 15px; border-radius: 6px; margin-top: 15px;">
+                        <div id="importMessage"></div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeImportModal()">Đóng</button>
+                    <button type="submit" class="btn-primary" id="importBtn">📤 Import ngay</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -324,6 +356,82 @@ try {
         const alert = document.querySelector('.alert');
         if (alert) alert.style.display = 'none';
     }, 3000);
+
+    // Các function cũ giữ nguyên...
+
+    function showImportModal() {
+        document.getElementById('importModal').classList.add('active');
+        document.getElementById('importResult').style.display = 'none';
+        document.getElementById('importForm').reset();
+    }
+
+    function closeImportModal() {
+        document.getElementById('importModal').classList.remove('active');
+    }
+
+    // Xử lý import
+    document.getElementById('importForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+        const importBtn = document.getElementById('importBtn');
+        const resultDiv = document.getElementById('importResult');
+        const messageDiv = document.getElementById('importMessage');
+
+        importBtn.disabled = true;
+        importBtn.textContent = '⏳ Đang import...';
+        resultDiv.style.display = 'none';
+
+        try {
+            const response = await fetch('import_nhan_su.php', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            resultDiv.style.display = 'block';
+
+            if (result.success) {
+                resultDiv.style.background = '#d4edda';
+                resultDiv.style.color = '#155724';
+                resultDiv.style.border = '1px solid #c3e6cb';
+
+                let message = '✓ ' + result.message;
+
+                if (result.details.errors && result.details.errors.length > 0) {
+                    message +=
+                        '<br><br><strong>Chi tiết lỗi:</strong><ul style="margin: 10px 0; padding-left: 20px;">';
+                    result.details.errors.forEach(err => {
+                        message += '<li>' + err + '</li>';
+                    });
+                    message += '</ul>';
+                }
+
+                messageDiv.innerHTML = message;
+
+                // Reload sau 2 giây
+                setTimeout(() => {
+                    location.reload();
+                }, 2000);
+
+            } else {
+                resultDiv.style.background = '#f8d7da';
+                resultDiv.style.color = '#721c24';
+                resultDiv.style.border = '1px solid #f5c6cb';
+                messageDiv.innerHTML = '✗ ' + result.message;
+            }
+
+        } catch (error) {
+            resultDiv.style.display = 'block';
+            resultDiv.style.background = '#f8d7da';
+            resultDiv.style.color = '#721c24';
+            messageDiv.innerHTML = '✗ Lỗi: ' + error.message;
+        } finally {
+            importBtn.disabled = false;
+            importBtn.textContent = '📤 Import ngay';
+        }
+    });
     </script>
 
     <style>
@@ -349,6 +457,23 @@ try {
         font-size: 13px;
         color: #667eea;
         font-weight: 500;
+    }
+
+    .btn-import {
+        padding: 10px 20px;
+        background: #28a745;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.3s;
+    }
+
+    .btn-import:hover {
+        background: #218838;
+        transform: translateY(-2px);
     }
     </style>
 </body>

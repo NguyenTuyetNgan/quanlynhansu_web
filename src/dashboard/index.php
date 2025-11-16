@@ -177,10 +177,6 @@ try {
     <div class="main-content">
         <div class="header">
             <h1>📊 Tổng quan hệ thống</h1>
-            <div class="user-info">
-                <span>Xin chào, <strong><?php echo $_SESSION['username']; ?></strong></span>
-                <a href="../../src/logout.php" class="btn-logout">Đăng xuất</a>
-            </div>
         </div>
 
         <!-- Bộ lọc -->

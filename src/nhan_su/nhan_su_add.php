@@ -8,7 +8,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         // Upload ảnh đại diện
         $anh_dai_dien = '';
         if (isset($_FILES['anh_dai_dien']) && $_FILES['anh_dai_dien']['error'] == 0) {
-            $upload_result = uploadFile($_FILES['anh_dai_dien'], 'uploads/avatars/');
+            $upload_result = uploadFile($_FILES['anh_dai_dien'], '../../assets/uploads/avatars/');
             if ($upload_result['success']) {
                 $anh_dai_dien = $upload_result['path'];
             }
@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $file_key = 'tai_lieu_file_' . $index;
                 
                 if (isset($_FILES[$file_key]) && $_FILES[$file_key]['error'] == 0) {
-                    $upload_result = uploadFile($_FILES[$file_key], 'uploads/documents/');
+                    $upload_result = uploadFile($_FILES[$file_key], '../../assets/uploads/documents/');
                     
                     if ($upload_result['success']) {
                         $stmt = $pdo->prepare("
@@ -104,8 +104,7 @@ try {
         <div class="header">
             <h1>➕ Thêm nhân sự mới</h1>
             <div class="user-info">
-                <span>Xin chào, <strong><?php echo $_SESSION['username']; ?></strong></span>
-                <a href="logout.php" class="btn-logout">Đăng xuất</a>
+                <a href="nhan_su.php" class="btn-secondary">← Quay lại</a>
             </div>
         </div>
 
@@ -116,17 +115,15 @@ try {
         <div class="table-container">
             <form method="POST" enctype="multipart/form-data">
                 <!-- Profile Header -->
-                <div class="profile-header-inline">
-                    <div class="profile-avatar-inline" id="avatarPreview">
+                <div class="form-avatar">
+                    <div class="avatar-preview" id="avatarPreview">
                         <div class="avatar-placeholder">👤</div>
                     </div>
-                    <div class="profile-info-inline">
-                        <h2>Nhân viên mới</h2>
-                        <div class="profile-meta">
-                            <label for="anh_dai_dien" class="btn-upload-inline">📷 Chọn ảnh đại diện</label>
-                            <input type="file" id="anh_dai_dien" name="anh_dai_dien" accept="image/*"
-                                style="display: none;" onchange="previewAvatar(this)">
-                        </div>
+                    <div>
+                        <h3>Nhân viên mới</h3>
+                        <label for="anh_dai_dien" class="btn-upload">📷 Chọn ảnh đại diện</label>
+                        <input type="file" id="anh_dai_dien" name="anh_dai_dien" accept="image/*" style="display: none;"
+                            onchange="previewAvatar(this)">
                     </div>
                 </div>
 
@@ -260,42 +257,16 @@ try {
                 <!-- Tab 3: Hồ sơ & Tài liệu -->
                 <div id="tab3" class="tab-content">
                     <div style="padding: 30px;">
-                        <h3 style="margin-bottom: 20px;">📁 Tài liệu đính kèm (Không bắt buộc)</h3>
-                        <div class="upload-area">
-                            <div class="form-grid">
-                                <div class="form-group">
-                                    <label>Loại tài liệu *</label>
-                                    <select id="loai_tai_lieu" class="form-control">
-                                        <option value="">-- Chọn loại tài liệu --</option>
-                                        <?php foreach ($loai_tai_lieu as $lt): ?>
-                                        <option value="<?php echo $lt['id']; ?>"><?php echo $lt['ten_loai']; ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
+                        <div style="margin-bottom: 20px;">
+                            <button type="button" onclick="showUploadModal()" class="btn-primary">➕ Thêm tài liệu
+                                mới</button>
+                        </div>
 
-                                <div class="form-group">
-                                    <label>Tên tài liệu *</label>
-                                    <input type="text" id="ten_tai_lieu" class="form-control"
-                                        placeholder="VD: Hợp đồng lao động">
-                                </div>
+                        <div id="filesList">
+                            <div style="text-align: center; padding: 60px; color: #999;">
+                                <div style="font-size: 64px; margin-bottom: 15px;">📁</div>
+                                <p>Chưa có tài liệu nào. Click "Thêm tài liệu mới" để upload.</p>
                             </div>
-
-                            <div class="form-group">
-                                <label>Ghi chú</label>
-                                <textarea id="ghi_chu" class="form-control" rows="2"
-                                    placeholder="Ghi chú thêm..."></textarea>
-                            </div>
-
-                            <div class="form-group">
-                                <label>Chọn file *</label>
-                                <input type="file" id="file_tai_lieu" class="form-control"
-                                    accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.mp4">
-                                <small style="color: #666; display: block; margin-top: 5px;">
-                                    ✓ Cho phép: PDF, Word, Excel, Hình ảnh, Video (Tối đa 5MB)
-                                </small>
-                            </div>
-
-                            <button type="button" onclick="addFile()" class="btn-primary">➕ Thêm tài liệu</button>
                         </div>
                     </div>
                 </div>
@@ -313,19 +284,55 @@ try {
         </div>
     </div>
 
-    <script>
-    // Tab switching
-    function showTab(tabId) {
-        document.querySelectorAll('.tab-content').forEach(tab => {
-            tab.classList.remove('active');
-        });
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        document.getElementById(tabId).classList.add('active');
-        event.target.classList.add('active');
-    }
+    <!-- Modal Upload Tài liệu -->
+    <div id="uploadModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>➕ Thêm tài liệu mới</h2>
+                <button class="btn-close" onclick="closeUploadModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Loại tài liệu *</label>
+                    <select id="loai_tai_lieu" class="form-control" required>
+                        <option value="">-- Chọn loại tài liệu --</option>
+                        <?php foreach ($loai_tai_lieu as $lt): ?>
+                        <option value="<?php echo $lt['id']; ?>"><?php echo $lt['ten_loai']; ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
 
+                <div class="form-group">
+                    <label>Tên tài liệu *</label>
+                    <input type="text" id="ten_tai_lieu" class="form-control"
+                        placeholder="VD: Hợp đồng lao động năm 2025" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Ghi chú</label>
+                    <textarea id="ghi_chu" class="form-control" rows="3"
+                        placeholder="Ghi chú thêm về tài liệu..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Chọn file *</label>
+                    <input type="file" id="file_tai_lieu" class="form-control"
+                        accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.mp4" required>
+                    <small style="color: #666; display: block; margin-top: 5px;">
+                        ✓ Cho phép: PDF, Word, Excel, Hình ảnh, Video<br>
+                        ✓ Kích thước tối đa: 5MB
+                    </small>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeUploadModal()">Đóng</button>
+                <button type="button" onclick="addFile()" class="btn-primary">➕ Thêm tài liệu</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
     // Preview avatar
     function previewAvatar(input) {
         if (input.files && input.files[0]) {
@@ -337,6 +344,19 @@ try {
             };
             reader.readAsDataURL(input.files[0]);
         }
+    }
+
+    // Upload modal
+    function showUploadModal() {
+        document.getElementById('uploadModal').classList.add('active');
+    }
+
+    function closeUploadModal() {
+        document.getElementById('uploadModal').classList.remove('active');
+        document.getElementById('loai_tai_lieu').value = '';
+        document.getElementById('ten_tai_lieu').value = '';
+        document.getElementById('ghi_chu').value = '';
+        document.getElementById('file_tai_lieu').value = '';
     }
 
     // File management
@@ -369,43 +389,42 @@ try {
         fileObjects[fileIndex] = fileTaiLieu.files[0];
 
         renderFiles();
-
-        // Reset form
-        loaiTaiLieu.value = '';
-        document.getElementById('ten_tai_lieu').value = '';
-        document.getElementById('ghi_chu').value = '';
-        document.getElementById('file_tai_lieu').value = '';
+        closeUploadModal();
     }
 
     function removeFile(index) {
-        filesArray = filesArray.filter(f => f.index !== index);
-        delete fileObjects[index];
-        renderFiles();
+        if (confirm('⚠️ Bạn có chắc muốn xóa tài liệu này?')) {
+            filesArray = filesArray.filter(f => f.index !== index);
+            delete fileObjects[index];
+            renderFiles();
+        }
     }
 
     function renderFiles() {
         const container = document.getElementById('filesList');
         if (filesArray.length === 0) {
             container.innerHTML =
-                '<div style="text-align: center; color: #999; padding: 20px;">Chưa có tài liệu nào. Click "Thêm tài liệu" để upload.</div>';
+                '<div style="text-align: center; padding: 60px; color: #999;"><div style="font-size: 64px; margin-bottom: 15px;">📁</div><p>Chưa có tài liệu nào. Click "Thêm tài liệu mới" để upload.</p></div>';
             return;
         }
 
-        let html = '<div class="files-grid">';
+        let html = '<div class="documents-grid">';
         filesArray.forEach(file => {
             const icon = getFileIcon(file.file_name);
             html += `
-                    <div class="file-item">
-                        <div class="file-icon">${icon}</div>
-                        <div class="file-info">
-                            <div class="file-name">${file.ten_tai_lieu}</div>
-                            <div class="file-meta">${file.file_name} • ${file.file_size}</div>
-                            <div class="file-type">${file.loai_tai_lieu_text}</div>
-                            ${file.ghi_chu ? `<div class="file-note">📝 ${file.ghi_chu}</div>` : ''}
-                        </div>
-                        <button type="button" onclick="removeFile(${file.index})" class="btn-icon btn-delete">🗑️</button>
+                <div class="document-card">
+                    <div class="doc-icon">${icon}</div>
+                    <div class="doc-info">
+                        <div class="doc-name">${file.ten_tai_lieu}</div>
+                        <div class="doc-type">${file.loai_tai_lieu_text}</div>
+                        <div class="doc-meta">📄 ${file.file_name} • ${file.file_size}</div>
+                        ${file.ghi_chu ? `<div class="doc-note">📝 ${file.ghi_chu}</div>` : ''}
                     </div>
-                `;
+                    <div class="doc-actions">
+                        <button type="button" onclick="removeFile(${file.index})" class="btn-icon btn-delete" title="Xóa">🗑️</button>
+                    </div>
+                </div>
+            `;
         });
         html += '</div>';
         container.innerHTML = html;
@@ -453,112 +472,102 @@ try {
 
     // Initialize
     renderFiles();
+
+    // Auto hide alerts
+    setTimeout(() => {
+        document.querySelectorAll('.alert').forEach(el => {
+            el.style.opacity = '0';
+            setTimeout(() => el.style.display = 'none', 300);
+        });
+    }, 3000);
     </script>
 
     <style>
+    .alert {
+        padding: 15px 20px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: opacity 0.3s;
+    }
+
     .alert-danger {
         background: #f8d7da;
         color: #721c24;
-        padding: 15px 20px;
-        border-radius: 8px;
-        margin-bottom: 20px;
         border-left: 4px solid #dc3545;
     }
 
-    .profile-header-inline {
+    .form-avatar {
         display: flex;
         gap: 25px;
-        padding: 30px;
+        align-items: center;
+        padding: 25px;
         background: #f8f9fa;
-        border-bottom: 2px solid #e0e0e0;
+        border-radius: 12px;
+        margin: 30px;
+        margin-bottom: 0;
     }
 
-    .profile-avatar-inline {
-        width: 100px;
-        height: 100px;
+    .avatar-preview {
+        width: 120px;
+        height: 120px;
         border-radius: 50%;
-        border: 3px dashed #667eea;
-        overflow: hidden;
         background: white;
+        border: 3px solid #667eea;
         display: flex;
         align-items: center;
         justify-content: center;
+        overflow: hidden;
         flex-shrink: 0;
-        transition: all 0.3s;
-    }
-
-    .profile-avatar-inline:hover {
-        border-style: solid;
-        transform: scale(1.05);
-    }
-
-    .profile-avatar-inline img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
     }
 
     .avatar-placeholder {
         font-size: 48px;
-        color: #667eea;
     }
 
-    .profile-info-inline h2 {
-        font-size: 24px;
-        margin-bottom: 10px;
-        color: #333;
-    }
-
-    .profile-meta {
-        display: flex;
-        gap: 15px;
-        align-items: center;
-    }
-
-    .btn-upload-inline {
+    .btn-upload {
         padding: 8px 16px;
         background: #667eea;
         color: white;
         border-radius: 6px;
         cursor: pointer;
         font-size: 14px;
-        transition: all 0.3s;
         display: inline-block;
+        margin-top: 10px;
+        transition: all 0.3s;
     }
 
-    .btn-upload-inline:hover {
+    .btn-upload:hover {
         background: #5568d3;
-        transform: translateY(-2px);
     }
 
-    .upload-area {
-        background: #f8f9fa;
-        padding: 25px;
-        border-radius: 12px;
-        border: 2px dashed #e0e0e0;
-    }
-
-    .files-grid {
+    .documents-grid {
         display: grid;
         gap: 15px;
-        margin-bottom: 20px;
     }
 
-    .file-item {
+    .document-card {
         display: flex;
         align-items: center;
-        gap: 15px;
-        padding: 15px;
-        background: white;
+        gap: 20px;
+        padding: 20px;
+        background: #f8f9fa;
         border-radius: 8px;
-        border: 1px solid #e0e0e0;
+        transition: all 0.3s;
+        border: 2px solid transparent;
     }
 
-    .file-icon {
-        font-size: 32px;
-        width: 50px;
-        height: 50px;
-        background: #f0f4ff;
+    .document-card:hover {
+        background: #e9ecef;
+        border-color: #667eea;
+        transform: translateX(5px);
+    }
+
+    .doc-icon {
+        font-size: 40px;
+        width: 60px;
+        height: 60px;
+        background: white;
         border-radius: 8px;
         display: flex;
         align-items: center;
@@ -566,39 +575,44 @@ try {
         flex-shrink: 0;
     }
 
-    .file-info {
+    .doc-info {
         flex: 1;
     }
 
-    .file-name {
+    .doc-name {
+        font-size: 16px;
         font-weight: 600;
         color: #333;
-        margin-bottom: 4px;
+        margin-bottom: 5px;
     }
 
-    .file-meta {
-        font-size: 12px;
-        color: #999;
-        margin-bottom: 4px;
-    }
-
-    .file-type {
-        font-size: 11px;
+    .doc-type {
+        font-size: 13px;
         color: #667eea;
-        background: #f0f4ff;
-        padding: 2px 8px;
+        background: white;
+        padding: 3px 10px;
         border-radius: 4px;
         display: inline-block;
-        margin-bottom: 4px;
+        margin-bottom: 5px;
     }
 
-    .file-note {
+    .doc-meta {
         font-size: 12px;
+        color: #999;
+    }
+
+    .doc-note {
+        font-size: 13px;
         color: #666;
-        background: #fff;
+        margin-top: 5px;
+        background: white;
         padding: 5px 10px;
         border-radius: 4px;
-        margin-top: 5px;
+    }
+
+    .doc-actions {
+        display: flex;
+        gap: 10px;
     }
     </style>
 </body>

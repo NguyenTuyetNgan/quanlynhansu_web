@@ -59,7 +59,7 @@ try {
     <div class="main-content">
         <div class="header">
             <h1>👤 Chi tiết nhân sự</h1>
-            <div class="user-info">
+            <div class="header-actions">
                 <a href="nhan_su.php" class="btn-secondary">← Quay lại</a>
                 <a href="nhan_su_edit.php?id=<?php echo $id; ?>" class="btn-primary">✏️ Chỉnh sửa</a>
             </div>
