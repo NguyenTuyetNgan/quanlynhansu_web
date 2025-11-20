@@ -1,5 +1,5 @@
 <?php
-require_once '../config.php';
+require_once 'config.php';
 checkLogin();
 
 // Lấy thống kê
@@ -167,12 +167,12 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tổng quan - Quản lý nhân sự</title>
-    <link rel="stylesheet" href="../../assets/style.css">
+    <link rel="stylesheet" href="../assets/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
-    <?php include '../sidebar.php'; ?>
+    <?php include 'sidebar.php'; ?>
 
     <div class="main-content">
         <div class="header">
@@ -185,39 +185,47 @@ try {
                 style="display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; overflow-x: auto;">
                 <div class="filter-item" style="flex-shrink: 0;">
                     <input type="radio" name="trang_thai" id="all" value=""
-                        <?php echo !isset($_GET['trang_thai']) || $_GET['trang_thai'] == '' ? 'checked' : ''; ?>>
+                        <?php echo !isset($_GET['trang_thai']) || $_GET['trang_thai'] == '' ? 'checked' : ''; ?>
+                        onchange="this.form.submit()">
                     <label for="all" class="filter-btn">📊 Tất cả</label>
                 </div>
                 <div class="filter-item" style="flex-shrink: 0;">
                     <input type="radio" name="trang_thai" id="working" value="1"
-                        <?php echo isset($_GET['trang_thai']) && $_GET['trang_thai'] == '1' ? 'checked' : ''; ?>>
+                        <?php echo isset($_GET['trang_thai']) && $_GET['trang_thai'] == '1' ? 'checked' : ''; ?>
+                        onchange="this.form.submit()">
                     <label for="working" class="filter-btn">✅ Đang làm việc</label>
                 </div>
                 <div class="filter-item" style="flex-shrink: 0;">
                     <input type="radio" name="trang_thai" id="maternity" value="2"
-                        <?php echo isset($_GET['trang_thai']) && $_GET['trang_thai'] == '2' ? 'checked' : ''; ?>>
+                        <?php echo isset($_GET['trang_thai']) && $_GET['trang_thai'] == '2' ? 'checked' : ''; ?>
+                        onchange="this.form.submit()">
                     <label for="maternity" class="filter-btn">🤰 Đang nghỉ sinh</label>
                 </div>
                 <div class="filter-item" style="flex-shrink: 0;">
                     <input type="radio" name="trang_thai" id="resigned" value="3"
-                        <?php echo isset($_GET['trang_thai']) && $_GET['trang_thai'] == '3' ? 'checked' : ''; ?>>
+                        <?php echo isset($_GET['trang_thai']) && $_GET['trang_thai'] == '3' ? 'checked' : ''; ?>
+                        onchange="this.form.submit()">
                     <label for="resigned" class="filter-btn">❌ Đã nghỉ việc</label>
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
                     <input type="date" name="date_from" class="date-input"
-                        value="<?php echo $_GET['date_from'] ?? ''; ?>" style="width: 140px;">
+                        value="<?php echo $_GET['date_from'] ?? ''; ?>" style="width: 140px;"
+                        onchange="autoSubmitDate()">
+
                     <span style="font-size: 13px;">đến</span>
-                    <input type="date" name="date_to" class="date-input" value="<?php echo $_GET['date_to'] ?? ''; ?>"
-                        style="width: 140px;">
+
+                    <input type="date" name="date_to" id="date_to" class="date-input"
+                        value="<?php echo $_GET['date_to'] ?? ''; ?>" style="width: 140px;" onchange="autoSubmitDate()">
+
+
                 </div>
-                <button type="submit" class="btn-apply" style="flex-shrink: 0;">✓ Áp dụng</button>
                 <a href="index.php" class="btn-reset" style="flex-shrink: 0;">↻ Đặt lại</a>
             </form>
         </div>
 
         <!-- Thống kê tổng quan -->
         <div class="stats-grid">
-            <a href="../nhan_su/nhan_su.php?<?php
+            <a href="nhan_su/nhan_su.php?<?php
                 $params = $_GET;
                 $params['from_dashboard'] = '1';
                 echo http_build_query($params); 
@@ -237,7 +245,7 @@ try {
                 </div>
             </div>
 
-            <a href="../nhan_su/nhan_su.php?<?php 
+            <a href="nhan_su/nhan_su.php?<?php 
                 $params = $_GET;
                 $params['month_added'] = date('Y-m');
                 $params['from_dashboard'] = '1';
@@ -250,7 +258,7 @@ try {
                 </div>
             </a>
 
-            <a href="../nhan_su/nhan_su.php?<?php 
+            <a href="nhan_su/nhan_su.php?<?php 
                 $params = $_GET;
                 $params['birthday_month'] = date('m');
                 echo http_build_query($params); 
@@ -432,9 +440,15 @@ try {
             }
         }
     });
+
+    function autoSubmitDate() {
+        const form = document.getElementById('filterForm');
+        form.submit();
+    }
     </script>
 
     <style>
+    /* Thêm CSS để nút reset đẹp hơn */
     .btn-reset {
         padding: 10px 20px;
         background: #f1f3f5;
@@ -453,26 +467,24 @@ try {
         background: #e0e0e0;
     }
 
-    .chart-header {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 15px;
+    /* Hiệu ứng loading khi submit */
+    .filter-section form.loading {
+        opacity: 0.6;
+        pointer-events: none;
     }
 
-    .chart-header h3 {
-        margin: 0;
-        padding: 0;
-        line-height: 1;
-    }
-
-    .year-select {
-        width: 140px;
-        padding: 6px 10px;
-        font-size: 16px;
-        border: 1px solid #ccc;
-        border-radius: 6px;
+    .filter-section form.loading::after {
+        content: '⏳ Đang lọc...';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
         background: white;
+        padding: 10px 20px;
+        border-radius: 6px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        font-weight: 600;
+        color: #667eea;
     }
     </style>
 </body>

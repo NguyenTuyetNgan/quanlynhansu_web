@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $_SESSION['username'] = $user['username'];
             $_SESSION['role'] = $user['role'];
 
-            header('Location: ../src/dashboard/index.php');
+            header('Location: index.php');
             exit();
         } else {
             $error = "Tên đăng nhập hoặc mật khẩu không đúng!";

@@ -12,7 +12,7 @@
 
         <nav class="navbar-menu">
             <!-- Tổng quan -->
-            <a href="<?php echo $base; ?>dashboard/index.php"
+            <a href="<?php echo $base; ?>index.php"
                 class="nav-item <?php echo (basename($current) == 'index.php') ? 'active' : ''; ?>">
                 <span class="nav-icon">📊</span>
                 <span>Tổng quan</span>
@@ -26,7 +26,7 @@
             </a>
 
             <!-- Phòng ban -->
-            <a href="<?php echo $base; ?>phong_ban/phong_ban.php"
+            <a href="<?php echo $base; ?>phong_ban.php"
                 class="nav-item <?php echo (strpos($current, 'phong_ban') !== false) ? 'active' : ''; ?>">
                 <span class="nav-icon">🏢</span>
                 <span>Phòng ban</span>

@@ -121,14 +121,12 @@ try {
         <?php endif; ?>
 
         <!-- Filter & Search -->
-        <div class="table-container">
-            <div class="table-header">
-                <h2>Danh sách nhân sự (<?php echo count($nhan_su_list); ?>)</h2>
-                <div class="table-actions">
-                    <button class="btn-import" onclick="showImportModal()">📥 Import</button>
-                    <button class="btn-primary" onclick="showXuatBaoCaoModal()">📥 Xuất báo cáo</button>
-                    <a href="nhan_su_add.php" class="btn-primary">+ Thêm nhân sự</a>
-                </div>
+        <div class="table-header">
+            <h2>Danh sách nhân sự (<?php echo count($nhan_su_list); ?>)</h2>
+            <div class="table-actions">
+                <button class="btn-import" onclick="showImportModal()">📥 Import</button>
+                <button class="btn-primary" onclick="showExportModal()">📤 Xuất báo cáo</button>
+                <a href="nhan_su_add.php" class="btn-primary">+ Thêm nhân sự</a>
             </div>
         </div>
 
@@ -273,12 +271,12 @@ try {
     </div>
     </div>
 
-    <!-- Modal Xuất báo cáo -->
-    <div id="xuatBaoCaoModal" class="modal">
+    <!-- Modal Export -->
+    <div id="exportModal" class="modal">
         <div class="modal-content" style="max-width: 500px;">
             <div class="modal-header">
                 <h2>📥 Xuất báo cáo</h2>
-                <button class="btn-close" onclick="closeXuatBaoCaoModal()">×</button>
+                <button class="btn-close" onclick="closeExportModal()">×</button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
@@ -291,13 +289,13 @@ try {
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn-secondary" onclick="closeXuatBaoCaoModal()">Đóng</button>
-                <button class="btn-primary" onclick="xuatBaoCao()">Đăng nhập</button>
+                <button class="btn-secondary" onclick="closeExportModal()">Đóng</button>
+                <button class="btn-primary" onclick="exportModal()">Đăng nhập</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal Import -->
+    <!-- Modal Import-->
     <div id="importModal" class="modal">
         <div class="modal-content" style="max-width: 600px;">
             <div class="modal-header">
@@ -339,26 +337,20 @@ try {
         }
     }
 
-    function showXuatBaoCaoModal() {
-        document.getElementById('xuatBaoCaoModal').classList.add('active');
+    // Xuất báo cáo
+    function showExportModal() {
+        document.getElementById('exportModal').classList.add('active');
     }
 
-    function closeXuatBaoCaoModal() {
-        document.getElementById('xuatBaoCaoModal').classList.remove('active');
+    function closeExportModal() {
+        document.getElementById('exportModal').classList.remove('active');
     }
 
-    function xuatBaoCao() {
-        window.location.href = 'export_excel.php';
+    function exportModal() {
+        window.location.href = 'export_csv.php';
     }
 
-    // Tự động ẩn thông báo
-    setTimeout(() => {
-        const alert = document.querySelector('.alert');
-        if (alert) alert.style.display = 'none';
-    }, 3000);
-
-    // Các function cũ giữ nguyên...
-
+    // Import
     function showImportModal() {
         document.getElementById('importModal').classList.add('active');
         document.getElementById('importResult').style.display = 'none';
@@ -383,7 +375,7 @@ try {
         resultDiv.style.display = 'none';
 
         try {
-            const response = await fetch('import_nhan_su.php', {
+            const response = await fetch('import_csv.php', {
                 method: 'POST',
                 body: formData
             });
@@ -432,33 +424,15 @@ try {
             importBtn.textContent = '📤 Import ngay';
         }
     });
+
+    // Tự động ẩn thông báo
+    setTimeout(() => {
+        const alert = document.querySelector('.alert');
+        if (alert) alert.style.display = 'none';
+    }, 3000);
     </script>
 
     <style>
-    .alert {
-        padding: 15px;
-        margin-bottom: 20px;
-        border-radius: 8px;
-        font-size: 14px;
-    }
-
-    .alert-success {
-        background: #d4edda;
-        color: #155724;
-        border: 1px solid #c3e6cb;
-    }
-
-    .filter-badge {
-        display: inline-block;
-        padding: 6px 12px;
-        background: white;
-        border: 1px solid #667eea;
-        border-radius: 20px;
-        font-size: 13px;
-        color: #667eea;
-        font-weight: 500;
-    }
-
     .btn-import {
         padding: 10px 20px;
         background: #28a745;

@@ -1,5 +1,5 @@
 <?php
-require_once '../config.php';
+require_once 'config.php';
 checkLogin();
 
 // Xử lý thêm/sửa/xóa phòng ban
@@ -62,15 +62,11 @@ try {
 </head>
 
 <body>
-    <?php include '../sidebar.php'; ?>
+    <?php include 'sidebar.php'; ?>
 
     <div class="main-content">
         <div class="header">
             <h1>🏢 Quản lý phòng ban</h1>
-            <div class="user-info">
-                <span>Xin chào, <strong><?php echo $_SESSION['username']; ?></strong></span>
-                <a href="logout.php" class="btn-logout">Đăng xuất</a>
-            </div>
         </div>
 
         <?php if (isset($success)): ?>
@@ -208,6 +204,19 @@ try {
     </script>
 
     <style>
+    .alert {
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        font-size: 14px;
+    }
+
+    .alert-success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+
     .departments-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));

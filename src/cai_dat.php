@@ -81,10 +81,6 @@ try {
     <div class="main-content">
         <div class="header">
             <h1>⚙️ Cài đặt hệ thống</h1>
-            <div class="user-info">
-                <span>Xin chào, <strong><?php echo $_SESSION['username']; ?></strong></span>
-                <a href="logout.php" class="btn-logout">Đăng xuất</a>
-            </div>
         </div>
 
         <?php if (isset($success)): ?>
