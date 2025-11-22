@@ -513,20 +513,20 @@ try {
     }
 
     .btn-import {
-        background: #28a745;
+        background: #667eea;
     }
 
     .btn-import:hover {
-        background: #218838;
+        background: #5568d3;
         transform: translateY(-2px);
     }
 
     .btn-export {
-        background: #17a2b8;
+        background: #667eea;
     }
 
     .btn-export:hover {
-        background: #138496;
+        background: #5568d3;
         transform: translateY(-2px);
     }
 

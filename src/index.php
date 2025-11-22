@@ -254,6 +254,7 @@ try {
             <a href="nhan_su/nhan_su.php?<?php 
                 $params = $_GET;
                 $params['birthday_month'] = date('m');
+                $params['from_dashboard'] = '1';
                 echo http_build_query($params); 
             ?>" class="stat-card stat-blue" style="text-decoration: none; color: inherit;">
                 <div class="stat-icon">🎂</div>

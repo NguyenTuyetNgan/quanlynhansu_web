@@ -29,12 +29,6 @@
                 <span>Phòng ban</span>
             </a>
 
-            <a href="<?php echo $base; ?>bao_cao.php"
-                class="nav-item <?php echo (basename($current) == 'bao_cao.php') ? 'active' : ''; ?>">
-                <span class="nav-icon">📋</span>
-                <span>Báo cáo</span>
-            </a>
-
             <a href="<?php echo $base; ?>danh_muc.php"
                 class="nav-item <?php echo (basename($current) == 'danh_muc.php') ? 'active' : ''; ?>">
                 <span class="nav-icon">⚙️</span>
@@ -55,7 +49,7 @@
                 <div class="user-name"><?php echo $_SESSION['username']; ?></div>
                 <div class="user-role"><?php echo $_SESSION['role'] == 'admin' ? 'Quản trị viên' : 'Nhân viên'; ?></div>
             </div>
-            <div class="user-avatar">👤</div>
+            <a href="<?php echo $base; ?>thong_tin_ca_nhan.php" class="user-avatar" title="Thông tin cá nhân">👤</a>
             <a href="<?php echo $base; ?>logout.php" class="btn-logout-nav">Đăng xuất</a>
         </div>
     </div>
@@ -138,15 +132,39 @@
 .navbar-user {
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 10px;
     color: white;
     flex-shrink: 0;
+    height: 70px;
+    padding: 0;
 }
 
 .navbar-user .user-info {
     display: flex;
     flex-direction: column;
     text-align: right;
+    justify-content: center;
+    max-width: 100px;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.navbar-user .user-name {
+    font-weight: 600;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.3;
+}
+
+.navbar-user .user-role {
+    font-size: 11px;
+    opacity: 0.85;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.3;
 }
 
 .navbar-user .user-avatar {
@@ -158,16 +176,14 @@
     align-items: center;
     justify-content: center;
     font-size: 20px;
+    text-decoration: none;
+    color: white;
+    flex-shrink: 0;
 }
 
-.navbar-user .user-name {
-    font-weight: 600;
-    font-size: 14px;
-}
-
-.navbar-user .user-role {
-    font-size: 12px;
-    opacity: 0.85;
+.navbar-user .user-avatar:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.05);
 }
 
 .btn-logout-nav {

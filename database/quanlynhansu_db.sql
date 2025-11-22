@@ -115,6 +115,18 @@ FOREIGN KEY (nhan_su_id) REFERENCES nhan_su(id) ON DELETE SET NULL;
 -- Password: admin123
 UPDATE users SET password = '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi' WHERE username = 'admin';]
 
+-- Tạo bảng lưu cài đặt hệ thống
+CREATE TABLE IF NOT EXISTS system_settings (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    setting_key VARCHAR(100) UNIQUE NOT NULL,
+    setting_value TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Thêm mật khẩu truy cập mặc định
+INSERT INTO system_settings (setting_key, setting_value) VALUES ('account_page_password', '123456');
+
 -- Insert dữ liệu mẫu
 INSERT INTO chuc_vu (ten_chuc_vu) VALUES 
 ('Giám đốc'), ('Trưởng phòng'), ('Nhân viên'), ('Thực tập sinh');
