@@ -72,7 +72,7 @@ foreach ($nhan_su_list as $ns) {
         $ns['loai_hop_dong'] ?: '',
         $ns['muc_luong'] ? number_format($ns['muc_luong'], 0, ',', '.') : '',
         $ns['ten_trinh_do'] ?: '',
-        $ns['ten_trang_thai']
+        $ns['ten_trang_thai'] ?: '',
     ]);
 }
 

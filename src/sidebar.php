@@ -11,46 +11,49 @@
         </div>
 
         <nav class="navbar-menu">
-            <!-- Tổng quan -->
             <a href="<?php echo $base; ?>index.php"
                 class="nav-item <?php echo (basename($current) == 'index.php') ? 'active' : ''; ?>">
                 <span class="nav-icon">📊</span>
                 <span>Tổng quan</span>
             </a>
 
-            <!-- Nhân sự -->
             <a href="<?php echo $base; ?>nhan_su/nhan_su.php"
                 class="nav-item <?php echo (strpos($current, 'nhan_su') !== false) ? 'active' : ''; ?>">
                 <span class="nav-icon">👥</span>
                 <span>Nhân sự</span>
             </a>
 
-            <!-- Phòng ban -->
             <a href="<?php echo $base; ?>phong_ban.php"
                 class="nav-item <?php echo (strpos($current, 'phong_ban') !== false) ? 'active' : ''; ?>">
                 <span class="nav-icon">🏢</span>
                 <span>Phòng ban</span>
             </a>
 
-            <!-- Báo cáo -->
             <a href="<?php echo $base; ?>bao_cao.php"
                 class="nav-item <?php echo (basename($current) == 'bao_cao.php') ? 'active' : ''; ?>">
                 <span class="nav-icon">📋</span>
                 <span>Báo cáo</span>
             </a>
 
-            <!-- Cài đặt -->
-            <a href="<?php echo $base; ?>cai_dat.php"
-                class="nav-item <?php echo (basename($current) == 'cai_dat.php') ? 'active' : ''; ?>">
+            <a href="<?php echo $base; ?>danh_muc.php"
+                class="nav-item <?php echo (basename($current) == 'danh_muc.php') ? 'active' : ''; ?>">
                 <span class="nav-icon">⚙️</span>
-                <span>Cài đặt</span>
+                <span>Danh mục</span>
             </a>
+
+            <?php if (isset($_SESSION['role']) && $_SESSION['role'] == 'admin'): ?>
+            <a href="<?php echo $base; ?>quan_ly_tai_khoan.php"
+                class="nav-item <?php echo (basename($current) == 'quan_ly_tai_khoan.php') ? 'active' : ''; ?>">
+                <span class="nav-icon">🔐</span>
+                <span>Tài khoản</span>
+            </a>
+            <?php endif; ?>
         </nav>
 
         <div class="navbar-user">
             <div class="user-info">
                 <div class="user-name"><?php echo $_SESSION['username']; ?></div>
-                <div class="user-role"><?php echo $_SESSION['role']; ?></div>
+                <div class="user-role"><?php echo $_SESSION['role'] == 'admin' ? 'Quản trị viên' : 'Nhân viên'; ?></div>
             </div>
             <div class="user-avatar">👤</div>
             <a href="<?php echo $base; ?>logout.php" class="btn-logout-nav">Đăng xuất</a>
@@ -59,7 +62,6 @@
 </div>
 
 <style>
-/* Top Navbar */
 .top-navbar {
     position: fixed;
     top: 0;
@@ -186,7 +188,6 @@
     box-shadow: 0 4px 12px rgba(255, 71, 87, 0.3);
 }
 
-/* Adjust main content */
 .main-content {
     margin-left: 0 !important;
     margin-top: 70px;
@@ -194,12 +195,10 @@
     min-height: calc(100vh - 70px);
 }
 
-/* Hide old sidebar (nếu vẫn còn CSS cũ) */
 .sidebar {
     display: none !important;
 }
 
-/* Responsive */
 @media (max-width: 1024px) {
     .navbar-brand h2 {
         display: none;

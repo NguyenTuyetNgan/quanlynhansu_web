@@ -4,12 +4,10 @@ checkLogin();
 
 // Lấy thống kê
 try {
-    // Lấy filter từ GET
     $filter_trang_thai = $_GET['trang_thai'] ?? '';
     $filter_date_from = $_GET['date_from'] ?? '';
     $filter_date_to = $_GET['date_to'] ?? '';
     
-    // Build WHERE clause
     $where_clauses = [];
     $params = [];
     
@@ -17,143 +15,91 @@ try {
         $where_clauses[] = "trang_thai_id = ?";
         $params[] = $filter_trang_thai;
     }
-    
     if ($filter_date_from) {
         $where_clauses[] = "ngay_vao_lam >= ?";
         $params[] = $filter_date_from;
     }
-    
     if ($filter_date_to) {
         $where_clauses[] = "ngay_vao_lam <= ?";
         $params[] = $filter_date_to;
     }
     
-    $where_sql = '';
-    if (!empty($where_clauses)) {
-        $where_sql = "WHERE " . implode(" AND ", $where_clauses);
-    }
+    $where_sql = !empty($where_clauses) ? "WHERE " . implode(" AND ", $where_clauses) : '';
     
-    // Tổng số nhân sự (có filter)
-    $sql = "SELECT COUNT(*) FROM nhan_su $where_sql";
-    $stmt = $pdo->prepare($sql);
+    // Tổng số nhân sự
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM nhan_su $where_sql");
     $stmt->execute($params);
     $tong_nhan_su = $stmt->fetchColumn();
     
     // Tổng số phòng ban
-    $stmt = $pdo->query("SELECT COUNT(*) FROM phong_ban");
-    $tong_phong_ban = $stmt->fetchColumn();
+    $tong_phong_ban = $pdo->query("SELECT COUNT(*) FROM phong_ban")->fetchColumn();
     
-    // Nhân sự mới (tháng này) - có filter
-    $where_clauses_month = $where_clauses;
-    $where_clauses_month[] = "MONTH(created_at) = MONTH(CURRENT_DATE())";
-    $where_clauses_month[] = "YEAR(created_at) = YEAR(CURRENT_DATE())";
-    $where_sql_month = "WHERE " . implode(" AND ", $where_clauses_month);
-    
-    $sql = "SELECT COUNT(*) FROM nhan_su $where_sql_month";
-    $stmt = $pdo->prepare($sql);
+    // Nhân sự mới tháng này
+    $where_month = $where_clauses;
+    $where_month[] = "MONTH(created_at) = MONTH(CURRENT_DATE())";
+    $where_month[] = "YEAR(created_at) = YEAR(CURRENT_DATE())";
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM nhan_su WHERE " . implode(" AND ", $where_month));
     $stmt->execute($params);
     $nhan_su_moi = $stmt->fetchColumn();
     
-    // Sinh nhật trong tháng - có filter
-    $where_clauses_bday = $where_clauses;
-    $where_clauses_bday[] = "MONTH(ngay_sinh) = MONTH(CURRENT_DATE())";
-    $where_sql_bday = "WHERE " . implode(" AND ", $where_clauses_bday);
-    
-    $sql = "SELECT COUNT(*) FROM nhan_su $where_sql_bday";
-    $stmt = $pdo->prepare($sql);
+    // Sinh nhật trong tháng
+    $where_bday = $where_clauses;
+    $where_bday[] = "MONTH(ngay_sinh) = MONTH(CURRENT_DATE())";
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM nhan_su WHERE " . implode(" AND ", $where_bday));
     $stmt->execute($params);
     $sinh_nhat_thang = $stmt->fetchColumn();
     
-    // Thống kê theo phòng ban - có filter
-    $sql = "SELECT pb.ten_phong_ban, COUNT(ns.id) as so_luong
-            FROM phong_ban pb
+    // Thống kê theo phòng ban
+    $sql = "SELECT pb.ten_phong_ban, COUNT(ns.id) as so_luong FROM phong_ban pb
             LEFT JOIN nhan_su ns ON pb.id = ns.phong_ban_id";
-    
     if (!empty($where_clauses)) {
-        $sql .= " AND " . implode(" AND ", array_map(function($clause) {
-            return "ns." . $clause;
-        }, $where_clauses));
+        $sql .= " AND " . implode(" AND ", array_map(fn($c) => "ns.$c", $where_clauses));
     }
-    
-    $sql .= " GROUP BY pb.id, pb.ten_phong_ban
-              ORDER BY so_luong DESC
-              LIMIT 3";
-    
+    $sql .= " GROUP BY pb.id, pb.ten_phong_ban ORDER BY so_luong DESC LIMIT 3";
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $phong_ban_stats = $stmt->fetchAll();
     
     // Thống kê giới tính
-    $sql = "
-        SELECT gioi_tinh, COUNT(*) as so_luong
-        FROM nhan_su
-        $where_sql
-        GROUP BY gioi_tinh
-    ";
-    $stmt = $pdo->prepare($sql);
+    $stmt = $pdo->prepare("SELECT gioi_tinh, COUNT(*) as so_luong FROM nhan_su $where_sql GROUP BY gioi_tinh");
     $stmt->execute($params);
     $gioi_tinh_stats = $stmt->fetchAll();
-
     
     // Thống kê chức vụ
-    $sql = "
-        SELECT cv.ten_chuc_vu, COUNT(ns.id) as so_luong
-        FROM chuc_vu cv
-        LEFT JOIN nhan_su ns ON cv.id = ns.chuc_vu_id
-    ";
+    $sql = "SELECT cv.ten_chuc_vu, COUNT(ns.id) as so_luong FROM chuc_vu cv
+            LEFT JOIN nhan_su ns ON cv.id = ns.chuc_vu_id";
     if (!empty($where_clauses)) {
         $sql .= " AND " . implode(" AND ", array_map(fn($c) => "ns.$c", $where_clauses));
     }
     $sql .= " GROUP BY cv.id, cv.ten_chuc_vu LIMIT 4";
-
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $chuc_vu_stats = $stmt->fetchAll();
-
     
     // Thống kê loại hợp đồng
-    $sql = "
-        SELECT lhd.ten_loai, COUNT(ns.id) as so_luong
-        FROM loai_hop_dong lhd
-        LEFT JOIN nhan_su ns ON lhd.id = ns.loai_hop_dong_id
-    ";
+    $sql = "SELECT lhd.ten_loai, COUNT(ns.id) as so_luong FROM loai_hop_dong lhd
+            LEFT JOIN nhan_su ns ON lhd.id = ns.loai_hop_dong_id";
     if (!empty($where_clauses)) {
         $sql .= " AND " . implode(" AND ", array_map(fn($c) => "ns.$c", $where_clauses));
     }
     $sql .= " GROUP BY lhd.id, lhd.ten_loai";
-
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $hop_dong_stats = $stmt->fetchAll();
 
-
-    // Lọc theo năm cho biểu đồ biến động nhân sự
+    // Biểu đồ biến động nhân sự
     $year = $_GET['year'] ?? date('Y');
-
-    // 12 tháng của năm
     $months = [];
     for ($m = 1; $m <= 12; $m++) {
         $months[] = $year . '-' . str_pad($m, 2, '0', STR_PAD_LEFT);
     }
-
-    // Lấy dữ liệu theo năm
-    $stmt = $pdo->prepare("
-        SELECT DATE_FORMAT(ngay_vao_lam, '%Y-%m') AS thang,
-            COUNT(*) AS so_luong
-        FROM nhan_su
-        WHERE YEAR(ngay_vao_lam) = ?
-        GROUP BY thang
-    ");
+    $stmt = $pdo->prepare("SELECT DATE_FORMAT(ngay_vao_lam, '%Y-%m') AS thang, COUNT(*) AS so_luong
+                           FROM nhan_su WHERE YEAR(ngay_vao_lam) = ? GROUP BY thang");
     $stmt->execute([$year]);
     $data = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-
-    // Merge dữ liệu 12 tháng
     $nhan_su_theo_thang = [];
     foreach ($months as $m) {
-        $nhan_su_theo_thang[] = [
-            'thang' => $m,
-            'so_luong' => isset($data[$m]) ? (int)$data[$m] : 0
-        ];
+        $nhan_su_theo_thang[] = ['thang' => $m, 'so_luong' => (int)($data[$m] ?? 0)];
     }
     
 } catch (PDOException $e) {
@@ -177,66 +123,55 @@ try {
     <div class="main-content">
         <div class="header">
             <h1>📊 Tổng quan hệ thống</h1>
+            <div class="header-actions">
+                <button class="btn-export" onclick="showExportModal()">📤 Xuất báo cáo</button>
+            </div>
         </div>
 
         <!-- Bộ lọc -->
         <div class="filter-section">
-            <form method="GET" action="" id="filterForm"
-                style="display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; overflow-x: auto;">
-                <div class="filter-item" style="flex-shrink: 0;">
+            <form method="GET" id="filterForm" style="display: flex; align-items: center; gap: 8px; flex-wrap: nowrap;">
+                <div class="filter-item">
                     <input type="radio" name="trang_thai" id="all" value=""
-                        <?php echo !isset($_GET['trang_thai']) || $_GET['trang_thai'] == '' ? 'checked' : ''; ?>
-                        onchange="this.form.submit()">
+                        <?php echo $filter_trang_thai == '' ? 'checked' : ''; ?> onchange="this.form.submit()">
                     <label for="all" class="filter-btn">📊 Tất cả</label>
                 </div>
-                <div class="filter-item" style="flex-shrink: 0;">
+                <div class="filter-item">
                     <input type="radio" name="trang_thai" id="working" value="1"
-                        <?php echo isset($_GET['trang_thai']) && $_GET['trang_thai'] == '1' ? 'checked' : ''; ?>
-                        onchange="this.form.submit()">
+                        <?php echo $filter_trang_thai == '1' ? 'checked' : ''; ?> onchange="this.form.submit()">
                     <label for="working" class="filter-btn">✅ Đang làm việc</label>
                 </div>
-                <div class="filter-item" style="flex-shrink: 0;">
+                <div class="filter-item">
                     <input type="radio" name="trang_thai" id="maternity" value="2"
-                        <?php echo isset($_GET['trang_thai']) && $_GET['trang_thai'] == '2' ? 'checked' : ''; ?>
-                        onchange="this.form.submit()">
+                        <?php echo $filter_trang_thai == '2' ? 'checked' : ''; ?> onchange="this.form.submit()">
                     <label for="maternity" class="filter-btn">🤰 Đang nghỉ sinh</label>
                 </div>
-                <div class="filter-item" style="flex-shrink: 0;">
+                <div class="filter-item">
                     <input type="radio" name="trang_thai" id="resigned" value="3"
-                        <?php echo isset($_GET['trang_thai']) && $_GET['trang_thai'] == '3' ? 'checked' : ''; ?>
-                        onchange="this.form.submit()">
+                        <?php echo $filter_trang_thai == '3' ? 'checked' : ''; ?> onchange="this.form.submit()">
                     <label for="resigned" class="filter-btn">❌ Đã nghỉ việc</label>
                 </div>
-                <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
-                    <input type="date" name="date_from" class="date-input"
-                        value="<?php echo $_GET['date_from'] ?? ''; ?>" style="width: 140px;"
-                        onchange="autoSubmitDate()">
-
-                    <span style="font-size: 13px;">đến</span>
-
-                    <input type="date" name="date_to" id="date_to" class="date-input"
-                        value="<?php echo $_GET['date_to'] ?? ''; ?>" style="width: 140px;" onchange="autoSubmitDate()">
-
-
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <input type="date" name="date_from" class="date-input" value="<?php echo $filter_date_from; ?>"
+                        onchange="this.form.submit()">
+                    <span>đến</span>
+                    <input type="date" name="date_to" class="date-input" value="<?php echo $filter_date_to; ?>"
+                        onchange="this.form.submit()">
                 </div>
-                <a href="index.php" class="btn-reset" style="flex-shrink: 0;">↻ Đặt lại</a>
+                <a href="index.php" class="btn-reset">↻ Đặt lại</a>
             </form>
         </div>
 
         <!-- Thống kê tổng quan -->
         <div class="stats-grid">
-            <a href="nhan_su/nhan_su.php?<?php
-                $params = $_GET;
-                $params['from_dashboard'] = '1';
-                echo http_build_query($params); 
-            ?>" class="stat-card stat-purple" style="text-decoration: none; color: inherit;">
+            <a href="nhan_su/nhan_su.php?<?php echo http_build_query(array_merge($_GET, ['from_dashboard' => '1'])); ?>"
+                class="stat-card stat-purple">
                 <div class="stat-icon">👥</div>
                 <div class="stat-content">
                     <h3><?php echo $tong_nhan_su; ?></h3>
                     <p>Tổng nhân sự</p>
                 </div>
             </a>
-
             <div class="stat-card stat-cyan">
                 <div class="stat-icon">🏢</div>
                 <div class="stat-content">
@@ -244,25 +179,15 @@ try {
                     <p>Phòng ban</p>
                 </div>
             </div>
-
-            <a href="nhan_su/nhan_su.php?<?php 
-                $params = $_GET;
-                $params['month_added'] = date('Y-m');
-                $params['from_dashboard'] = '1';
-                echo http_build_query($params); 
-            ?>" class="stat-card stat-pink" style="text-decoration: none; color: inherit;">
+            <a href="nhan_su/nhan_su.php?month_added=<?php echo date('Y-m'); ?>&from_dashboard=1"
+                class="stat-card stat-pink">
                 <div class="stat-icon">👤</div>
                 <div class="stat-content">
                     <h3><?php echo $nhan_su_moi; ?></h3>
                     <p>Nhân sự mới</p>
                 </div>
             </a>
-
-            <a href="nhan_su/nhan_su.php?<?php 
-                $params = $_GET;
-                $params['birthday_month'] = date('m');
-                echo http_build_query($params); 
-            ?>" class="stat-card stat-blue" style="text-decoration: none; color: inherit;">
+            <a href="nhan_su/nhan_su.php?birthday_month=<?php echo date('m'); ?>" class="stat-card stat-blue">
                 <div class="stat-icon">🎂</div>
                 <div class="stat-content">
                     <h3><?php echo $sinh_nhat_thang; ?></h3>
@@ -271,63 +196,50 @@ try {
             </a>
         </div>
 
-        <!-- Phân bố nhân sự theo phòng ban -->
+        <!-- Charts -->
         <div class="charts-row">
             <div class="chart-card">
                 <h3>Phân bố nhân sự theo phòng ban</h3>
                 <canvas id="phongBanChart"></canvas>
                 <div class="chart-legend">
-                    <?php foreach ($phong_ban_stats as $index => $pb): ?>
-                    <div class="legend-item">
-                        <span class="legend-number"><?php echo $index + 1; ?></span>
-                        <span><?php echo $pb['ten_phong_ban']; ?></span>
+                    <?php foreach ($phong_ban_stats as $i => $pb): ?>
+                    <div class="legend-item"><span
+                            class="legend-number"><?php echo $i + 1; ?></span><span><?php echo $pb['ten_phong_ban']; ?></span>
                     </div>
                     <?php endforeach; ?>
                 </div>
             </div>
-
-
             <div class="chart-card">
                 <div class="chart-header">
                     <h3>Biến động nhân sự</h3>
                     <select id="yearSelect" class="year-select"
                         onchange="window.location='index.php?year='+this.value;">
-                        <?php
-                        $selectedYear = $_GET['year'] ?? date('Y');  // năm được chọn
-                        $maxYear = date('Y'); // năm hiện tại của hệ thống (2025)
-                        for ($y = $maxYear; $y >= 2000; $y--) {
-                            $selected = ($y == $selectedYear) ? 'selected' : '';
-                            echo "<option value='$y' $selected>$y</option>";
-                        }
-                        ?>
+                        <?php for ($y = date('Y'); $y >= 2000; $y--): ?>
+                        <option value="<?php echo $y; ?>" <?php echo $y == $year ? 'selected' : ''; ?>><?php echo $y; ?>
+                        </option>
+                        <?php endfor; ?>
                     </select>
                 </div>
                 <canvas id="bienDongChart"></canvas>
             </div>
-
         </div>
 
-        <!-- Thống kê chi tiết -->
+        <!-- Stats Detail -->
         <div class="stats-detail-row">
             <div class="stats-detail-card">
                 <h3>Thống kê giới tính</h3>
-                <div class="pie-chart-container">
-                    <canvas id="gioiTinhChart"></canvas>
-                </div>
+                <div class="pie-chart-container"><canvas id="gioiTinhChart"></canvas></div>
                 <div class="stats-list">
-                    <?php 
-                    $total_gioi_tinh = array_sum(array_column($gioi_tinh_stats, 'so_luong'));
-                    foreach ($gioi_tinh_stats as $gt): 
-                    ?>
+                    <?php $total = array_sum(array_column($gioi_tinh_stats, 'so_luong'));
+                    foreach ($gioi_tinh_stats as $gt): ?>
                     <div class="stats-item">
                         <span><?php echo $gt['gioi_tinh']; ?></span>
                         <span class="stats-value"><?php echo $gt['so_luong']; ?>
-                            (<?php echo $total_gioi_tinh > 0 ? round($gt['so_luong']/$total_gioi_tinh*100, 1) : 0; ?>%)</span>
+                            (<?php echo $total > 0 ? round($gt['so_luong']/$total*100, 1) : 0; ?>%)</span>
                     </div>
                     <?php endforeach; ?>
                 </div>
             </div>
-
             <div class="stats-detail-card">
                 <h3>Thống kê chức vụ</h3>
                 <div class="bar-chart-container">
@@ -344,7 +256,6 @@ try {
                     <?php endforeach; ?>
                 </div>
             </div>
-
             <div class="stats-detail-card">
                 <h3>Thống kê loại hợp đồng</h3>
                 <div class="bar-chart-container">
@@ -364,10 +275,54 @@ try {
         </div>
     </div>
 
+    <!-- Modal Export -->
+    <div id="exportModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>📤 Xuất báo cáo</h2>
+                <button class="btn-close" onclick="closeExportModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 20px; color: #666;">Chọn loại báo cáo bạn muốn xuất:</p>
+
+                <div class="export-options">
+                    <a href="export_all.php?type=nhansu" class="export-option">
+                        <div class="export-icon">👥</div>
+                        <div class="export-info">
+                            <h4>Danh sách nhân sự</h4>
+                            <p>Xuất toàn bộ thông tin nhân viên</p>
+                        </div>
+                        <span class="export-format">CSV</span>
+                    </a>
+
+                    <a href="export_all.php?type=phongban" class="export-option">
+                        <div class="export-icon">🏢</div>
+                        <div class="export-info">
+                            <h4>Danh sách phòng ban</h4>
+                            <p>Xuất thông tin các phòng ban</p>
+                        </div>
+                        <span class="export-format">CSV</span>
+                    </a>
+
+                    <a href="export_all.php?type=all" class="export-option export-all">
+                        <div class="export-icon">📊</div>
+                        <div class="export-info">
+                            <h4>Xuất tất cả</h4>
+                            <p>Nhân sự + Phòng ban + Thống kê (3 sheet)</p>
+                        </div>
+                        <span class="export-format">Excel</span>
+                    </a>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeExportModal()">Đóng</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-    // Biểu đồ phòng ban
-    const pbCtx = document.getElementById('phongBanChart').getContext('2d');
-    new Chart(pbCtx, {
+    // Charts
+    new Chart(document.getElementById('phongBanChart'), {
         type: 'bar',
         data: {
             labels: <?php echo json_encode(array_column($phong_ban_stats, 'ten_phong_ban')); ?>,
@@ -391,9 +346,7 @@ try {
         }
     });
 
-    // Biểu đồ giới tính
-    const gtCtx = document.getElementById('gioiTinhChart').getContext('2d');
-    new Chart(gtCtx, {
+    new Chart(document.getElementById('gioiTinhChart'), {
         type: 'doughnut',
         data: {
             labels: <?php echo json_encode(array_column($gioi_tinh_stats, 'gioi_tinh')); ?>,
@@ -412,9 +365,7 @@ try {
         }
     });
 
-    // Biểu đồ biến động nhân sự
-    const bdCtx = document.getElementById('bienDongChart').getContext('2d');
-    new Chart(bdCtx, {
+    new Chart(document.getElementById('bienDongChart'), {
         type: 'line',
         data: {
             labels: <?php echo json_encode(array_column($nhan_su_theo_thang, 'thang')); ?>,
@@ -422,7 +373,7 @@ try {
                 label: 'Nhân viên vào',
                 data: <?php echo json_encode(array_column($nhan_su_theo_thang, 'so_luong')); ?>,
                 borderColor: '#667eea',
-                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                backgroundColor: 'rgba(102,126,234,0.1)',
                 tension: 0.4
             }]
         },
@@ -441,50 +392,119 @@ try {
         }
     });
 
-    function autoSubmitDate() {
-        const form = document.getElementById('filterForm');
-        form.submit();
+    function showExportModal() {
+        document.getElementById('exportModal').classList.add('active');
+    }
+
+    function closeExportModal() {
+        document.getElementById('exportModal').classList.remove('active');
     }
     </script>
 
     <style>
-    /* Thêm CSS để nút reset đẹp hơn */
-    .btn-reset {
+    .btn-export {
         padding: 10px 20px;
-        background: #f1f3f5;
-        color: #666;
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
         border: none;
-        border-radius: 6px;
+        border-radius: 8px;
         cursor: pointer;
         font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s;
-        text-decoration: none;
-        display: inline-block;
-    }
-
-    .btn-reset:hover {
-        background: #e0e0e0;
-    }
-
-    /* Hiệu ứng loading khi submit */
-    .filter-section form.loading {
-        opacity: 0.6;
-        pointer-events: none;
-    }
-
-    .filter-section form.loading::after {
-        content: '⏳ Đang lọc...';
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: white;
-        padding: 10px 20px;
-        border-radius: 6px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         font-weight: 600;
-        color: #667eea;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-export:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
+    }
+
+    .export-options {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .export-option {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 10px;
+        text-decoration: none;
+        color: inherit;
+        transition: all 0.3s;
+        border: 2px solid transparent;
+    }
+
+    .export-option:hover {
+        background: #e9ecef;
+        border-color: #667eea;
+        transform: translateX(5px);
+    }
+
+    .export-option.export-all {
+        background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+        border: 2px solid #667eea;
+    }
+
+    .export-icon {
+        width: 50px;
+        height: 50px;
+        background: white;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .export-info {
+        flex: 1;
+    }
+
+    .export-info h4 {
+        font-size: 16px;
+        color: #333;
+        margin-bottom: 4px;
+    }
+
+    .export-info p {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .export-format {
+        padding: 5px 12px;
+        background: #667eea;
+        color: white;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .chart-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .chart-header h3 {
+        margin: 0;
+    }
+
+    .year-select {
+        padding: 8px 15px;
+        border: 2px solid #e0e0e0;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
     }
     </style>
 </body>

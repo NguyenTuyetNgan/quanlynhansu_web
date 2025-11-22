@@ -104,6 +104,17 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Thêm cột nhan_su_id vào bảng users để liên kết với nhân viên
+ALTER TABLE users ADD COLUMN nhan_su_id INT NULL AFTER role;
+
+-- Thêm foreign key (tùy chọn)
+ALTER TABLE users ADD CONSTRAINT fk_users_nhan_su 
+FOREIGN KEY (nhan_su_id) REFERENCES nhan_su(id) ON DELETE SET NULL;
+
+-- Cập nhật password admin thành hash (nếu đang dùng plaintext)
+-- Password: admin123
+UPDATE users SET password = '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi' WHERE username = 'admin';]
+
 -- Insert dữ liệu mẫu
 INSERT INTO chuc_vu (ten_chuc_vu) VALUES 
 ('Giám đốc'), ('Trưởng phòng'), ('Nhân viên'), ('Thực tập sinh');
