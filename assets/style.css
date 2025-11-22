@@ -574,10 +574,4 @@ textarea.form-control {
         gap: 15px;
         align-items: flex-start;
     }
-    
-    .table-header {
-        flex-direction: column;
-        gap: 15px;
-        align-items: flex-start;
-    }
 }

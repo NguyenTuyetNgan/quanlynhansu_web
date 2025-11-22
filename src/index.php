@@ -4,10 +4,12 @@ checkLogin();
 
 // Lấy thống kê
 try {
+    // Lấy filter từ GET
     $filter_trang_thai = $_GET['trang_thai'] ?? '';
     $filter_date_from = $_GET['date_from'] ?? '';
     $filter_date_to = $_GET['date_to'] ?? '';
     
+    // Build WHERE clause
     $where_clauses = [];
     $params = [];
     
@@ -15,91 +17,143 @@ try {
         $where_clauses[] = "trang_thai_id = ?";
         $params[] = $filter_trang_thai;
     }
+    
     if ($filter_date_from) {
         $where_clauses[] = "ngay_vao_lam >= ?";
         $params[] = $filter_date_from;
     }
+    
     if ($filter_date_to) {
         $where_clauses[] = "ngay_vao_lam <= ?";
         $params[] = $filter_date_to;
     }
     
-    $where_sql = !empty($where_clauses) ? "WHERE " . implode(" AND ", $where_clauses) : '';
+    $where_sql = '';
+    if (!empty($where_clauses)) {
+        $where_sql = "WHERE " . implode(" AND ", $where_clauses);
+    }
     
-    // Tổng số nhân sự
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM nhan_su $where_sql");
+    // Tổng số nhân sự (có filter)
+    $sql = "SELECT COUNT(*) FROM nhan_su $where_sql";
+    $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $tong_nhan_su = $stmt->fetchColumn();
     
     // Tổng số phòng ban
-    $tong_phong_ban = $pdo->query("SELECT COUNT(*) FROM phong_ban")->fetchColumn();
+    $stmt = $pdo->query("SELECT COUNT(*) FROM phong_ban");
+    $tong_phong_ban = $stmt->fetchColumn();
     
-    // Nhân sự mới tháng này
-    $where_month = $where_clauses;
-    $where_month[] = "MONTH(created_at) = MONTH(CURRENT_DATE())";
-    $where_month[] = "YEAR(created_at) = YEAR(CURRENT_DATE())";
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM nhan_su WHERE " . implode(" AND ", $where_month));
+    // Nhân sự mới (tháng này) - có filter
+    $where_clauses_month = $where_clauses;
+    $where_clauses_month[] = "MONTH(created_at) = MONTH(CURRENT_DATE())";
+    $where_clauses_month[] = "YEAR(created_at) = YEAR(CURRENT_DATE())";
+    $where_sql_month = "WHERE " . implode(" AND ", $where_clauses_month);
+    
+    $sql = "SELECT COUNT(*) FROM nhan_su $where_sql_month";
+    $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $nhan_su_moi = $stmt->fetchColumn();
     
-    // Sinh nhật trong tháng
-    $where_bday = $where_clauses;
-    $where_bday[] = "MONTH(ngay_sinh) = MONTH(CURRENT_DATE())";
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM nhan_su WHERE " . implode(" AND ", $where_bday));
+    // Sinh nhật trong tháng - có filter
+    $where_clauses_bday = $where_clauses;
+    $where_clauses_bday[] = "MONTH(ngay_sinh) = MONTH(CURRENT_DATE())";
+    $where_sql_bday = "WHERE " . implode(" AND ", $where_clauses_bday);
+    
+    $sql = "SELECT COUNT(*) FROM nhan_su $where_sql_bday";
+    $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $sinh_nhat_thang = $stmt->fetchColumn();
     
-    // Thống kê theo phòng ban
-    $sql = "SELECT pb.ten_phong_ban, COUNT(ns.id) as so_luong FROM phong_ban pb
+        // Thống kê theo phòng ban - có filter
+    $sql = "SELECT pb.ten_phong_ban, COUNT(ns.id) as so_luong
+            FROM phong_ban pb
             LEFT JOIN nhan_su ns ON pb.id = ns.phong_ban_id";
+    
     if (!empty($where_clauses)) {
-        $sql .= " AND " . implode(" AND ", array_map(fn($c) => "ns.$c", $where_clauses));
+        $sql .= " AND " . implode(" AND ", array_map(function($clause) {
+            return "ns." . $clause;
+        }, $where_clauses));
     }
-    $sql .= " GROUP BY pb.id, pb.ten_phong_ban ORDER BY so_luong DESC LIMIT 3";
+    
+    $sql .= " GROUP BY pb.id, pb.ten_phong_ban
+              ORDER BY so_luong DESC
+              LIMIT 3";
+    
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $phong_ban_stats = $stmt->fetchAll();
     
     // Thống kê giới tính
-    $stmt = $pdo->prepare("SELECT gioi_tinh, COUNT(*) as so_luong FROM nhan_su $where_sql GROUP BY gioi_tinh");
+    $sql = "
+        SELECT gioi_tinh, COUNT(*) as so_luong
+        FROM nhan_su
+        $where_sql
+        GROUP BY gioi_tinh
+    ";
+    $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $gioi_tinh_stats = $stmt->fetchAll();
+
     
     // Thống kê chức vụ
-    $sql = "SELECT cv.ten_chuc_vu, COUNT(ns.id) as so_luong FROM chuc_vu cv
-            LEFT JOIN nhan_su ns ON cv.id = ns.chuc_vu_id";
+    $sql = "
+        SELECT cv.ten_chuc_vu, COUNT(ns.id) as so_luong
+        FROM chuc_vu cv
+        LEFT JOIN nhan_su ns ON cv.id = ns.chuc_vu_id
+    ";
     if (!empty($where_clauses)) {
         $sql .= " AND " . implode(" AND ", array_map(fn($c) => "ns.$c", $where_clauses));
     }
     $sql .= " GROUP BY cv.id, cv.ten_chuc_vu LIMIT 4";
+
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $chuc_vu_stats = $stmt->fetchAll();
+
     
     // Thống kê loại hợp đồng
-    $sql = "SELECT lhd.ten_loai, COUNT(ns.id) as so_luong FROM loai_hop_dong lhd
-            LEFT JOIN nhan_su ns ON lhd.id = ns.loai_hop_dong_id";
+    $sql = "
+        SELECT lhd.ten_loai, COUNT(ns.id) as so_luong
+        FROM loai_hop_dong lhd
+        LEFT JOIN nhan_su ns ON lhd.id = ns.loai_hop_dong_id
+    ";
     if (!empty($where_clauses)) {
         $sql .= " AND " . implode(" AND ", array_map(fn($c) => "ns.$c", $where_clauses));
     }
     $sql .= " GROUP BY lhd.id, lhd.ten_loai";
+
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $hop_dong_stats = $stmt->fetchAll();
 
-    // Biểu đồ biến động nhân sự
+
+    // Lọc theo năm cho biểu đồ biến động nhân sự
     $year = $_GET['year'] ?? date('Y');
+
+    // 12 tháng của năm
     $months = [];
     for ($m = 1; $m <= 12; $m++) {
         $months[] = $year . '-' . str_pad($m, 2, '0', STR_PAD_LEFT);
     }
-    $stmt = $pdo->prepare("SELECT DATE_FORMAT(ngay_vao_lam, '%Y-%m') AS thang, COUNT(*) AS so_luong
-                           FROM nhan_su WHERE YEAR(ngay_vao_lam) = ? GROUP BY thang");
+
+    // Lấy dữ liệu theo năm
+    $stmt = $pdo->prepare("
+        SELECT DATE_FORMAT(ngay_vao_lam, '%Y-%m') AS thang,
+            COUNT(*) AS so_luong
+        FROM nhan_su
+        WHERE YEAR(ngay_vao_lam) = ?
+        GROUP BY thang
+    ");
     $stmt->execute([$year]);
     $data = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+    // Merge dữ liệu 12 tháng
     $nhan_su_theo_thang = [];
     foreach ($months as $m) {
-        $nhan_su_theo_thang[] = ['thang' => $m, 'so_luong' => (int)($data[$m] ?? 0)];
+        $nhan_su_theo_thang[] = [
+            'thang' => $m,
+            'so_luong' => isset($data[$m]) ? (int)$data[$m] : 0
+        ];
     }
     
 } catch (PDOException $e) {
@@ -164,14 +218,18 @@ try {
 
         <!-- Thống kê tổng quan -->
         <div class="stats-grid">
-            <a href="nhan_su/nhan_su.php?<?php echo http_build_query(array_merge($_GET, ['from_dashboard' => '1'])); ?>"
-                class="stat-card stat-purple">
+            <a href="nhan_su/nhan_su.php?<?php
+                $params = $_GET;
+                $params['from_dashboard'] = '1';
+                echo http_build_query($params); 
+            ?>" class="stat-card stat-purple" style="text-decoration: none; color: inherit;">
                 <div class="stat-icon">👥</div>
                 <div class="stat-content">
                     <h3><?php echo $tong_nhan_su; ?></h3>
                     <p>Tổng nhân sự</p>
                 </div>
             </a>
+
             <div class="stat-card stat-cyan">
                 <div class="stat-icon">🏢</div>
                 <div class="stat-content">
@@ -179,15 +237,25 @@ try {
                     <p>Phòng ban</p>
                 </div>
             </div>
-            <a href="nhan_su/nhan_su.php?month_added=<?php echo date('Y-m'); ?>&from_dashboard=1"
-                class="stat-card stat-pink">
+
+            <a href="nhan_su/nhan_su.php?<?php 
+                $params = $_GET;
+                $params['month_added'] = date('Y-m');
+                $params['from_dashboard'] = '1';
+                echo http_build_query($params); 
+            ?>" class="stat-card stat-pink" style="text-decoration: none; color: inherit;">
                 <div class="stat-icon">👤</div>
                 <div class="stat-content">
                     <h3><?php echo $nhan_su_moi; ?></h3>
                     <p>Nhân sự mới</p>
                 </div>
             </a>
-            <a href="nhan_su/nhan_su.php?birthday_month=<?php echo date('m'); ?>" class="stat-card stat-blue">
+
+            <a href="nhan_su/nhan_su.php?<?php 
+                $params = $_GET;
+                $params['birthday_month'] = date('m');
+                echo http_build_query($params); 
+            ?>" class="stat-card stat-blue" style="text-decoration: none; color: inherit;">
                 <div class="stat-icon">🎂</div>
                 <div class="stat-content">
                     <h3><?php echo $sinh_nhat_thang; ?></h3>
@@ -196,7 +264,7 @@ try {
             </a>
         </div>
 
-        <!-- Charts -->
+        <!-- Phân bố nhân sự theo phòng ban -->
         <div class="charts-row">
             <div class="chart-card">
                 <h3>Phân bố nhân sự theo phòng ban</h3>
@@ -224,7 +292,7 @@ try {
             </div>
         </div>
 
-        <!-- Stats Detail -->
+        <!-- Thống kê chi tiết -->
         <div class="stats-detail-row">
             <div class="stats-detail-card">
                 <h3>Thống kê giới tính</h3>
@@ -292,7 +360,7 @@ try {
                             <h4>Danh sách nhân sự</h4>
                             <p>Xuất toàn bộ thông tin nhân viên</p>
                         </div>
-                        <span class="export-format">CSV</span>
+                        <span class="export-format">Excel</span>
                     </a>
 
                     <a href="export_all.php?type=phongban" class="export-option">
@@ -301,7 +369,7 @@ try {
                             <h4>Danh sách phòng ban</h4>
                             <p>Xuất thông tin các phòng ban</p>
                         </div>
-                        <span class="export-format">CSV</span>
+                        <span class="export-format">Excel</span>
                     </a>
 
                     <a href="export_all.php?type=all" class="export-option export-all">
@@ -321,7 +389,7 @@ try {
     </div>
 
     <script>
-    // Charts
+    // Biểu đồ phòng ban
     new Chart(document.getElementById('phongBanChart'), {
         type: 'bar',
         data: {
@@ -346,6 +414,7 @@ try {
         }
     });
 
+    // Biểu đồ giới tính
     new Chart(document.getElementById('gioiTinhChart'), {
         type: 'doughnut',
         data: {
@@ -365,6 +434,7 @@ try {
         }
     });
 
+    // Biểu đồ biến động nhân sự
     new Chart(document.getElementById('bienDongChart'), {
         type: 'line',
         data: {
