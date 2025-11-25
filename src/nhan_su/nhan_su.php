@@ -71,6 +71,10 @@ if ($month_added) {
     $params[] = $month_added;
 }
 
+if (!empty($date_from) || !empty($date_to)) {
+    $month_added = ''; 
+}
+
 // Filter: Sinh nhật trong tháng
 if ($birthday_month) {
     $sql .= " AND MONTH(ns.ngay_sinh) = ?";
@@ -132,7 +136,7 @@ try {
             </div>
 
             <!-- Hiển thị filter đang áp dụng -->
-            <?php if ($month_added || $birthday_month || ($trang_thai && isset($_GET['from_dashboard'])) || ($date_from && $date_to && isset($_GET['from_dashboard']))): ?>
+            <?php if ($month_added || $birthday_month || ($trang_thai && isset($_GET['from_dashboard'])) || (($date_from || $date_to) && isset($_GET['from_dashboard']))): ?>
             <div style="padding: 15px 20px; background: #f0f4ff; border-bottom: 2px solid #e0e0e0;">
                 <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                     <strong style="color: #667eea;">🔍 Đang lọc từ Dashboard:</strong>
@@ -152,9 +156,18 @@ try {
                                 ?>
                     </span>
                     <?php endif; ?>
-                    <?php if ($date_from && $date_to && isset($_GET['from_dashboard'])): ?>
-                    <span class="filter-badge">📆 Từ <?php echo formatDate($date_from); ?> đến
-                        <?php echo formatDate($date_to); ?></span>
+                    <?php if (($date_from || $date_to) && isset($_GET['from_dashboard'])): ?>
+                    <span class="filter-badge">📆
+                        <?php 
+                        if ($date_from && $date_to) {
+                            echo "Từ " . formatDate($date_from) . " đến " . formatDate($date_to);
+                        } elseif ($date_from) {
+                            echo "Từ ngày " . formatDate($date_from);
+                        } elseif ($date_to) {
+                            echo "Đến ngày " . formatDate($date_to);
+                        }
+                    ?>
+                    </span>
                     <?php endif; ?>
                     <a href="nhan_su.php"
                         style="color: #667eea; text-decoration: none; font-size: 14px; margin-left: 10px;">✖ Xóa bộ

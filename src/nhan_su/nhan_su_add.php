@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $file_key = 'tai_lieu_file_' . $index;
                 
                 if (isset($_FILES[$file_key]) && $_FILES[$file_key]['error'] == 0) {
-                    $upload_result = uploadFile($_FILES[$file_key], '../assets/uploads/documents/');
+                    $upload_result = uploadFile($_FILES[$file_key], '../../assets/uploads/documents/');
                     
                     if ($upload_result['success']) {
                         $stmt = $pdo->prepare("

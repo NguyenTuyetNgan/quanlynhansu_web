@@ -44,15 +44,35 @@ try {
     $tong_phong_ban = $stmt->fetchColumn();
     
     // Nhân sự mới (tháng này) - có filter
-    $where_clauses_month = $where_clauses;
-    $where_clauses_month[] = "MONTH(created_at) = MONTH(CURRENT_DATE())";
-    $where_clauses_month[] = "YEAR(created_at) = YEAR(CURRENT_DATE())";
+    // Nhân sự mới theo khoảng ngày lọc
+    $where_clauses_month = $where_clauses; // giữ filter hiện có
+    $params_month = $params; // sao chép param
+
+    if ($filter_date_from) {
+        $where_clauses_month[] = "ngay_vao_lam >= ?";
+        $params_month[] = $filter_date_from;
+    }
+    if ($filter_date_to) {
+        $where_clauses_month[] = "ngay_vao_lam <= ?";
+        $params_month[] = $filter_date_to;
+    }
+
+    // Nếu không có filter ngày, mặc định lấy tháng hiện tại
+    if (!$filter_date_from && !$filter_date_to) {
+        $where_clauses_month[] = "MONTH(ngay_vao_lam) = ?";
+        $params_month[] = date('m');
+        $where_clauses_month[] = "YEAR(ngay_vao_lam) = ?";
+        $params_month[] = date('Y');
+    }
+
     $where_sql_month = "WHERE " . implode(" AND ", $where_clauses_month);
-    
+
     $sql = "SELECT COUNT(*) FROM nhan_su $where_sql_month";
     $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
+    $stmt->execute($params_month);
     $nhan_su_moi = $stmt->fetchColumn();
+
+
     
     // Sinh nhật trong tháng - có filter
     $where_clauses_bday = $where_clauses;
@@ -136,7 +156,7 @@ try {
         $months[] = $year . '-' . str_pad($m, 2, '0', STR_PAD_LEFT);
     }
 
-    // Lấy dữ liệu theo năm
+    // 1. Lấy dữ liệu NHÂN VIÊN VÀO (Dựa trên ngày vào làm)
     $stmt = $pdo->prepare("
         SELECT DATE_FORMAT(ngay_vao_lam, '%Y-%m') AS thang,
             COUNT(*) AS so_luong
@@ -145,14 +165,28 @@ try {
         GROUP BY thang
     ");
     $stmt->execute([$year]);
-    $data = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+    $data_vao = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
-    // Merge dữ liệu 12 tháng
+    // 2. Lấy dữ liệu NHÂN VIÊN NGHỈ (Dựa trên ngày nghỉ việc và trạng thái nghỉ = 3)
+    // Lưu ý: Cần đảm bảo database có cột 'ngay_nghi_viec'
+    $stmt = $pdo->prepare("
+        SELECT DATE_FORMAT(ngay_nghi_viec, '%Y-%m') AS thang,
+            COUNT(*) AS so_luong
+        FROM nhan_su
+        WHERE YEAR(ngay_nghi_viec) = ? 
+        AND trang_thai_id = 3 
+        GROUP BY thang
+    ");
+    $stmt->execute([$year]);
+    $data_nghi = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+    // 3. Merge dữ liệu 12 tháng (Gộp cả VÀO và NGHỈ)
     $nhan_su_theo_thang = [];
     foreach ($months as $m) {
         $nhan_su_theo_thang[] = [
             'thang' => $m,
-            'so_luong' => isset($data[$m]) ? (int)$data[$m] : 0
+            'so_luong_vao' => isset($data_vao[$m]) ? (int)$data_vao[$m] : 0,   // Dữ liệu vào
+            'so_luong_nghi' => isset($data_nghi[$m]) ? (int)$data_nghi[$m] : 0  // Dữ liệu nghỉ
         ];
     }
     
@@ -441,12 +475,23 @@ try {
         data: {
             labels: <?php echo json_encode(array_column($nhan_su_theo_thang, 'thang')); ?>,
             datasets: [{
-                label: 'Nhân viên vào',
-                data: <?php echo json_encode(array_column($nhan_su_theo_thang, 'so_luong')); ?>,
-                borderColor: '#667eea',
-                backgroundColor: 'rgba(102,126,234,0.1)',
-                tension: 0.4
-            }]
+                    label: 'Nhân viên vào',
+                    // Chú ý: sửa thành so_luong_vao cho khớp với PHP
+                    data: <?php echo json_encode(array_column($nhan_su_theo_thang, 'so_luong_vao')); ?>,
+                    borderColor: '#667eea', // Màu xanh
+                    backgroundColor: 'rgba(102,126,234,0.1)',
+                    tension: 0.4
+                },
+                {
+                    // --- THÊM DATASET MỚI Ở ĐÂY ---
+                    label: 'Nhân viên nghỉ việc',
+                    // Lấy dữ liệu từ so_luong_nghi
+                    data: <?php echo json_encode(array_column($nhan_su_theo_thang, 'so_luong_nghi')); ?>,
+                    borderColor: '#ff6b6b', // Màu đỏ
+                    backgroundColor: 'rgba(255, 107, 107, 0.1)', // Màu nền đỏ nhạt
+                    tension: 0.4
+                }
+            ]
         },
         options: {
             responsive: true,
@@ -457,7 +502,10 @@ try {
             },
             scales: {
                 y: {
-                    beginAtZero: true
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1 // Chỉ hiện số nguyên (người)
+                    }
                 }
             }
         }
