@@ -26,7 +26,7 @@ if (isset($_POST['change_page_password'])) {
     $old_pass = $_POST['old_page_password'] ?? '';
     $new_pass = $_POST['new_page_password'] ?? '';
     $confirm_pass = $_POST['confirm_page_password'] ?? '';
-    
+
     if ($old_pass !== $ACCOUNT_PAGE_PASSWORD) {
         $pass_error = "Mật khẩu cũ không đúng!";
     } elseif (strlen($new_pass) < 4) {
@@ -44,10 +44,12 @@ if (isset($_POST['change_page_password'])) {
 
 // Kiểm tra xác thực - chỉ cho phép nếu vừa POST đúng mật khẩu
 $verified = false;
+$current_access_pass = ''; // <--- THÊM DÒNG NÀY: Biến để giữ mật khẩu tạm thời
 
 if (isset($_POST['verify_password'])) {
     if ($_POST['page_password'] === $ACCOUNT_PAGE_PASSWORD) {
         $verified = true;
+        $current_access_pass = $_POST['page_password']; // <--- THÊM DÒNG NÀY: Lưu lại mật khẩu đúng
     } else {
         $verify_error = "Mật khẩu không đúng!";
     }
@@ -55,54 +57,54 @@ if (isset($_POST['verify_password'])) {
 
 // Nếu chưa xác thực, hiển thị form nhập mật khẩu
 if (!$verified) {
-    ?>
-<!DOCTYPE html>
-<html lang="vi">
+?>
+    <!DOCTYPE html>
+    <html lang="vi">
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Xác thực - Quản lý tài khoản</title>
-    <link rel="stylesheet" href="../assets/style.css">
-</head>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Xác thực - Quản lý tài khoản</title>
+        <link rel="stylesheet" href="../assets/style.css">
+    </head>
 
-<body>
-    <?php include 'sidebar.php'; ?>
-    <div class="main-content">
-        <div
-            style="max-width: 400px; margin: 100px auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 2px 20px rgba(0,0,0,0.1);">
-            <div style="text-align: center; margin-bottom: 30px;">
-                <div style="font-size: 64px; margin-bottom: 15px;">🔐</div>
-                <h2 style="color: #333;">Xác thực bảo mật</h2>
-                <p style="color: #666; font-size: 14px;">Nhập mật khẩu để truy cập trang quản lý tài khoản</p>
-            </div>
-
-            <?php if (isset($verify_error)): ?>
+    <body>
+        <?php include 'sidebar.php'; ?>
+        <div class="main-content">
             <div
-                style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 6px; margin-bottom: 20px; text-align: center;">
-                ✗ <?php echo $verify_error; ?>
-            </div>
-            <?php endif; ?>
-
-            <form method="POST">
-                <input type="hidden" name="verify_password" value="1">
-                <div class="form-group">
-                    <label>Mật khẩu truy cập</label>
-                    <input type="password" name="page_password" class="form-control" placeholder="Nhập mật khẩu..."
-                        required autofocus>
+                style="max-width: 400px; margin: 100px auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 2px 20px rgba(0,0,0,0.1);">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <div style="font-size: 64px; margin-bottom: 15px;">🔐</div>
+                    <h2 style="color: #333;">Xác thực bảo mật</h2>
+                    <p style="color: #666; font-size: 14px;">Nhập mật khẩu để truy cập trang quản lý tài khoản</p>
                 </div>
-                <button type="submit" class="btn-primary" style="width: 100%; justify-content: center;">🔓 Xác
-                    nhận</button>
-            </form>
 
-            <div style="text-align: center; margin-top: 20px;">
-                <a href="index.php" style="color: #667eea; text-decoration: none;">← Quay lại trang chủ</a>
+                <?php if (isset($verify_error)): ?>
+                    <div
+                        style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 6px; margin-bottom: 20px; text-align: center;">
+                        ✗ <?php echo $verify_error; ?>
+                    </div>
+                <?php endif; ?>
+
+                <form method="POST">
+                    <input type="hidden" name="verify_password" value="1">
+                    <div class="form-group">
+                        <label>Mật khẩu truy cập</label>
+                        <input type="password" name="page_password" class="form-control" placeholder="Nhập mật khẩu..."
+                            required autofocus>
+                    </div>
+                    <button type="submit" class="btn-primary" style="width: 100%; justify-content: center;">🔓 Xác
+                        nhận</button>
+                </form>
+
+                <div style="text-align: center; margin-top: 20px;">
+                    <a href="index.php" style="color: #667eea; text-decoration: none;">← Quay lại trang chủ</a>
+                </div>
             </div>
         </div>
-    </div>
-</body>
+    </body>
 
-</html>
+    </html>
 <?php
     exit();
 }
@@ -129,16 +131,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         } elseif ($_POST['action'] == 'edit') {
             $sql = "UPDATE users SET username = ?, email = ?, role = ?";
             $params = [clean($_POST['username']), clean($_POST['email']), $_POST['role']];
-            
+
             // Nếu có đổi mật khẩu
             if (!empty($_POST['password'])) {
                 $sql .= ", password = ?";
                 $params[] = $_POST['password'];
             }
-            
+
             $sql .= " WHERE id = ?";
             $params[] = $_POST['id'];
-            
+
             $stmt = $pdo->prepare($sql);
             $stmt->execute($params);
             $success = "Cập nhật tài khoản thành công!";
@@ -194,10 +196,10 @@ try {
         </div>
 
         <?php if (isset($success)): ?>
-        <div class="alert alert-success">✓ <?php echo $success; ?></div>
+            <div class="alert alert-success">✓ <?php echo $success; ?></div>
         <?php endif; ?>
         <?php if (isset($error)): ?>
-        <div class="alert alert-danger">✗ <?php echo $error; ?></div>
+            <div class="alert alert-danger">✗ <?php echo $error; ?></div>
         <?php endif; ?>
 
         <div class="table-header">
@@ -220,30 +222,52 @@ try {
             </thead>
             <tbody>
                 <?php foreach ($users as $user): ?>
-                <tr>
-                    <td><?php echo $user['id']; ?></td>
-                    <td><strong><?php echo $user['username']; ?></strong></td>
-                    <td><?php echo $user['email'] ?: '-'; ?></td>
-                    <td>
-                        <span class="badge <?php echo $user['role'] == 'admin' ? 'badge-success' : 'badge-warning'; ?>">
-                            <?php echo $user['role'] == 'admin' ? '👑 Admin' : '👤 Nhân viên'; ?>
-                        </span>
-                    </td>
-                    <td><?php echo date('d/m/Y H:i', strtotime($user['created_at'])); ?></td>
-                    <td>
-                        <div class="action-buttons">
-                            <?php if ($user['role'] != 'admin'): ?>
-                            <button onclick='editUser(<?php echo json_encode($user); ?>)' class="btn-icon btn-edit"
-                                title="Sửa">✏️</button>
+                    <tr>
+                        <td><?php echo $user['id']; ?></td>
+                        <td>
+                            <strong><?php echo $user['username']; ?></strong>
+                            <?php if ($user['id'] == 1): ?>
+                                <span class="badge badge-warning" style="margin-left: 8px; font-size: 11px;">👑 Admin chính</span>
                             <?php endif; ?>
-                            <?php if ($user['id'] != $_SESSION['user_id'] && $user['role'] != 'admin'): ?>
-                            <button onclick="deleteUser(<?php echo $user['id']; ?>)" class="btn-icon btn-delete"
-                                title="Xóa">🗑️</button>
-                            <?php endif; ?>
-                        </div>
-                    </td>
-                    </td>
-                </tr>
+                        </td>
+                        <td><?php echo $user['email'] ?: '-'; ?></td>
+                        <td>
+                            <span class="badge <?php echo $user['role'] == 'admin' ? 'badge-success' : 'badge-warning'; ?>">
+                                <?php echo $user['role'] == 'admin' ? '👑 Admin' : '👤 Nhân viên'; ?>
+                            </span>
+                        </td>
+                        <td><?php echo date('d/m/Y H:i', strtotime($user['created_at'])); ?></td>
+                        <td>
+                            <div class="action-buttons">
+                                <?php
+                                // TRƯỜNG HỢP 1: Admin chính (ID 1) -> Luôn khóa
+                                if ($user['id'] == 1):
+                                ?>
+                                    <span class="btn-icon" style="cursor: not-allowed; opacity: 0.5;" title="Admin hệ thống">🔒</span>
+
+                                <?php
+                                // TRƯỜNG HỢP 2: Chính là tài khoản đang đăng nhập -> Không hiện nút sửa/xóa
+                                // (Có thể thay bằng icon người dùng để nhận biết, hoặc để trống)
+                                elseif ($user['id'] == $_SESSION['user_id']):
+                                ?>
+                                    <span class="btn-icon" style="cursor: default; color: #666;" title="Tài khoản của bạn">👤</span>
+
+                                <?php
+                                // CÁC TRƯỜNG HỢP CÒN LẠI: Admin con khác -> Hiện đủ nút Sửa và Xóa
+                                else:
+                                ?>
+                                    <button onclick='editUser(<?php echo json_encode($user); ?>)' class="btn-icon btn-edit" title="Sửa">
+                                        ✏️
+                                    </button>
+
+                                    <button onclick="deleteUser(<?php echo $user['id']; ?>)" class="btn-icon btn-delete" title="Xóa">
+                                        🗑️
+                                    </button>
+                                <?php endif; ?>
+                            </div>
+                        </td>
+                        </td>
+                    </tr>
                 <?php endforeach; ?>
             </tbody>
         </table>
@@ -261,6 +285,9 @@ try {
                 <div class="modal-body">
                     <input type="hidden" name="action" id="action" value="add">
                     <input type="hidden" name="id" id="user_id">
+
+                    <input type="hidden" name="verify_password" value="1">
+                    <input type="hidden" name="page_password" value="<?php echo $current_access_pass; ?>">
 
                     <div class="form-group">
                         <label>Tên đăng nhập *</label>
@@ -297,88 +324,88 @@ try {
     </div>
 
     <script>
-    function showAddModal() {
-        document.getElementById('modalTitle').textContent = 'Thêm tài khoản mới';
-        document.getElementById('action').value = 'add';
-        document.getElementById('user_id').value = '';
-        document.getElementById('username').value = '';
-        document.getElementById('password').value = '';
-        document.getElementById('password').required = true;
-        document.getElementById('passwordLabel').textContent = 'Mật khẩu *';
-        document.getElementById('passwordHint').style.display = 'none';
-        document.getElementById('email').value = '';
-        document.getElementById('role').value = 'user';
-        document.getElementById('userModal').classList.add('active');
-    }
-
-    function editUser(user) {
-        document.getElementById('modalTitle').textContent = 'Chỉnh sửa tài khoản';
-        document.getElementById('action').value = 'edit';
-        document.getElementById('user_id').value = user.id;
-        document.getElementById('username').value = user.username;
-        document.getElementById('password').value = '';
-        document.getElementById('password').required = false;
-        document.getElementById('passwordLabel').textContent = 'Mật khẩu mới';
-        document.getElementById('passwordHint').style.display = 'block';
-        document.getElementById('email').value = user.email || '';
-        document.getElementById('role').value = user.role;
-        document.getElementById('userModal').classList.add('active');
-    }
-
-    function closeModal() {
-        document.getElementById('userModal').classList.remove('active');
-    }
-
-    function deleteUser(id) {
-        if (confirm('⚠️ Bạn có chắc muốn xóa tài khoản này?\n\nHành động này không thể hoàn tác!')) {
-            window.location.href = 'quan_ly_tai_khoan.php?delete=' + id;
+        function showAddModal() {
+            document.getElementById('modalTitle').textContent = 'Thêm tài khoản mới';
+            document.getElementById('action').value = 'add';
+            document.getElementById('user_id').value = '';
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+            document.getElementById('password').required = true;
+            document.getElementById('passwordLabel').textContent = 'Mật khẩu *';
+            document.getElementById('passwordHint').style.display = 'none';
+            document.getElementById('email').value = '';
+            document.getElementById('role').value = 'user';
+            document.getElementById('userModal').classList.add('active');
         }
-    }
 
-    setTimeout(() => {
-        document.querySelectorAll('.alert').forEach(el => el.style.display = 'none');
-    }, 3000);
+        function editUser(user) {
+            document.getElementById('modalTitle').textContent = 'Chỉnh sửa tài khoản';
+            document.getElementById('action').value = 'edit';
+            document.getElementById('user_id').value = user.id;
+            document.getElementById('username').value = user.username;
+            document.getElementById('password').value = '';
+            document.getElementById('password').required = false;
+            document.getElementById('passwordLabel').textContent = 'Mật khẩu mới';
+            document.getElementById('passwordHint').style.display = 'block';
+            document.getElementById('email').value = user.email || '';
+            document.getElementById('role').value = user.role;
+            document.getElementById('userModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('userModal').classList.remove('active');
+        }
+
+        function deleteUser(id) {
+            if (confirm('⚠️ Bạn có chắc muốn xóa tài khoản này?\n\nHành động này không thể hoàn tác!')) {
+                window.location.href = 'quan_ly_tai_khoan.php?delete=' + id;
+            }
+        }
+
+        setTimeout(() => {
+            document.querySelectorAll('.alert').forEach(el => el.style.display = 'none');
+        }, 3000);
     </script>
 
     <style>
-    .alert {
-        padding: 15px 20px;
-        margin-bottom: 20px;
-        border-radius: 8px;
-        font-size: 14px;
-    }
+        .alert {
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
 
-    .alert-success {
-        background: #d4edda;
-        color: #155724;
-        border-left: 4px solid #28a745;
-    }
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
 
-    .alert-danger {
-        background: #f8d7da;
-        color: #721c24;
-        border-left: 4px solid #dc3545;
-    }
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #dc3545;
+        }
 
-    .btn-secondary {
-        padding: 10px 20px;
-        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-        color: white;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: 600;
-        transition: all 0.3s;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
+        .btn-secondary {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
 
-    .btn-secondary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
-    }
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
+        }
     </style>
 
     <!-- Modal Đổi mật khẩu truy cập -->
@@ -393,17 +420,17 @@ try {
                     <input type="hidden" name="change_page_password" value="1">
 
                     <?php if (isset($pass_error)): ?>
-                    <div
-                        style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
-                        ✗ <?php echo $pass_error; ?>
-                    </div>
+                        <div
+                            style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
+                            ✗ <?php echo $pass_error; ?>
+                        </div>
                     <?php endif; ?>
 
                     <?php if (isset($pass_success)): ?>
-                    <div
-                        style="background: #d4edda; color: #155724; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
-                        ✓ <?php echo $pass_success; ?>
-                    </div>
+                        <div
+                            style="background: #d4edda; color: #155724; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
+                            ✓ <?php echo $pass_success; ?>
+                        </div>
                     <?php endif; ?>
 
                     <div class="form-group">
@@ -431,17 +458,17 @@ try {
     </div>
 
     <script>
-    function showChangePassModal() {
-        document.getElementById('changePassModal').classList.add('active');
-    }
+        function showChangePassModal() {
+            document.getElementById('changePassModal').classList.add('active');
+        }
 
-    function closeChangePassModal() {
-        document.getElementById('changePassModal').classList.remove('active');
-    }
+        function closeChangePassModal() {
+            document.getElementById('changePassModal').classList.remove('active');
+        }
 
-    <?php if (isset($pass_error) || isset($pass_success)): ?>
-    showChangePassModal();
-    <?php endif; ?>
+        <?php if (isset($pass_error) || isset($pass_success)): ?>
+            showChangePassModal();
+        <?php endif; ?>
     </script>
 </body>
 

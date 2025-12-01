@@ -65,14 +65,22 @@ if ($date_to) {
     $params[] = $date_to;
 }
 
-// Filter: Nhân sự mới (thêm trong tháng)
-if ($month_added) {
-    $sql .= " AND DATE_FORMAT(ns.created_at, '%Y-%m') = ?";
-    $params[] = $month_added;
+// ... Các đoạn code lọc search, phòng ban giữ nguyên ...
+
+// 1. Lọc theo ngày (Giữ nguyên)
+if ($date_from) {
+    $sql .= " AND ns.ngay_vao_lam >= ?";
+    $params[] = $date_from;
+}
+if ($date_to) {
+    $sql .= " AND ns.ngay_vao_lam <= ?";
+    $params[] = $date_to;
 }
 
-if (!empty($date_from) || !empty($date_to)) {
-    $month_added = ''; 
+// 2. Lọc theo tháng (Giữ nguyên, không thêm code xóa $month_added nào cả)
+if ($month_added) {
+    $sql .= " AND DATE_FORMAT(ns.ngay_vao_lam, '%Y-%m') = ?";
+    $params[] = $month_added;
 }
 
 // Filter: Sinh nhật trong tháng
@@ -88,7 +96,7 @@ try {
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $nhan_su_list = $stmt->fetchAll();
-    
+
     // Lấy danh sách phòng ban, chức vụ
     $phong_ban_list = $pdo->query("SELECT * FROM phong_ban ORDER BY ten_phong_ban")->fetchAll();
     $chuc_vu_list = $pdo->query("SELECT * FROM chuc_vu ORDER BY ten_chuc_vu")->fetchAll();
@@ -115,13 +123,13 @@ try {
         </div>
 
         <?php if (isset($_GET['msg'])): ?>
-        <div class="alert alert-success">
-            <?php 
+            <div class="alert alert-success">
+                <?php
                 if ($_GET['msg'] == 'added') echo '✓ Thêm nhân sự thành công!';
                 if ($_GET['msg'] == 'updated') echo '✓ Cập nhật thành công!';
                 if ($_GET['msg'] == 'deleted') echo '✓ Xóa thành công!';
-            ?>
-        </div>
+                ?>
+            </div>
         <?php endif; ?>
 
         <!-- Filter & Search -->
@@ -136,44 +144,63 @@ try {
             </div>
 
             <!-- Hiển thị filter đang áp dụng -->
-            <?php if ($month_added || $birthday_month || ($trang_thai && isset($_GET['from_dashboard'])) || (($date_from || $date_to) && isset($_GET['from_dashboard']))): ?>
-            <div style="padding: 15px 20px; background: #f0f4ff; border-bottom: 2px solid #e0e0e0;">
-                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                    <strong style="color: #667eea;">🔍 Đang lọc từ Dashboard:</strong>
-                    <?php if ($month_added): ?>
-                    <span class="filter-badge">📅 Nhân sự mới tháng
-                        <?php echo date('m/Y', strtotime($month_added . '-01')); ?></span>
-                    <?php endif; ?>
-                    <?php if ($birthday_month): ?>
-                    <span class="filter-badge">🎂 Sinh nhật tháng <?php echo $birthday_month; ?></span>
-                    <?php endif; ?>
-                    <?php if ($trang_thai && isset($_GET['from_dashboard'])): ?>
-                    <span class="filter-badge">
-                        <?php 
-                                    if ($trang_thai == 1) echo '✅ Đang làm việc';
-                                    if ($trang_thai == 2) echo '🤰 Đang nghỉ sinh';
-                                    if ($trang_thai == 3) echo '❌ Đã nghỉ việc';
+            <?php
+            // Kiểm tra xem có điều kiện lọc nào không để hiện khung
+            $has_filter = $month_added || $birthday_month || $search || $phong_ban || $chuc_vu || $trang_thai || $date_from || $date_to;
+
+            // Chỉ hiện khung thông báo này nếu có tham số from_dashboard
+            if ($has_filter && isset($_GET['from_dashboard'])):
+            ?>
+                <div style="padding: 15px 20px; background: #f0f4ff; border-bottom: 2px solid #e0e0e0;">
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+
+                        <?php if (isset($_GET['from_dashboard'])): ?>
+                            <strong style="color: #667eea;">🔍 Đang lọc từ Dashboard:</strong>
+                            <?php if ($month_added): ?>
+                                <span class="filter-badge">📅 Nhân sự mới tháng
+                                    <?php echo date('m/Y', strtotime($month_added . '-01')); ?></span>
+                            <?php elseif ($date_from || $date_to): ?>
+                                <span class="filter-badge">📅 Nhân sự mới
+                                    (<?php
+                                        if ($date_from && $date_to) echo date('d/m/Y', strtotime($date_from)) . " - " . date('d/m/Y', strtotime($date_to));
+                                        elseif ($date_from) echo "Từ " . date('d/m/Y', strtotime($date_from));
+                                        ?>)
+                                </span>
+                            <?php endif; ?>
+
+                        <?php elseif ($date_from || $date_to): ?>
+                            <span class="filter-badge">📆
+                                <?php
+                                if ($date_from && $date_to) echo "Từ " . date('d/m/Y', strtotime($date_from)) . " đến " . date('d/m/Y', strtotime($date_to));
+                                elseif ($date_from) echo "Từ ngày " . date('d/m/Y', strtotime($date_from));
+                                elseif ($date_to) echo "Đến ngày " . date('d/m/Y', strtotime($date_to));
                                 ?>
-                    </span>
-                    <?php endif; ?>
-                    <?php if (($date_from || $date_to) && isset($_GET['from_dashboard'])): ?>
-                    <span class="filter-badge">📆
-                        <?php 
-                        if ($date_from && $date_to) {
-                            echo "Từ " . formatDate($date_from) . " đến " . formatDate($date_to);
-                        } elseif ($date_from) {
-                            echo "Từ ngày " . formatDate($date_from);
-                        } elseif ($date_to) {
-                            echo "Đến ngày " . formatDate($date_to);
-                        }
-                    ?>
-                    </span>
-                    <?php endif; ?>
-                    <a href="nhan_su.php"
-                        style="color: #667eea; text-decoration: none; font-size: 14px; margin-left: 10px;">✖ Xóa bộ
-                        lọc</a>
+                            </span>
+                        <?php endif; ?>
+
+                        <?php if ($birthday_month): ?>
+                            <span class="filter-badge">🎂 Sinh nhật tháng <?php echo $birthday_month; ?></span>
+                        <?php endif; ?>
+
+                        <?php if ($trang_thai): ?>
+                            <span class="filter-badge">
+                                <?php
+                                if ($trang_thai == 1) echo '✅ Đang làm việc';
+                                if ($trang_thai == 2) echo '🤰 Đang nghỉ sinh';
+                                if ($trang_thai == 3) echo '❌ Đã nghỉ việc';
+                                ?>
+                            </span>
+                        <?php endif; ?>
+
+                        <?php if ($search): ?>
+                            <span class="filter-badge">🔎 "<?php echo htmlspecialchars($search); ?>"</span>
+                        <?php endif; ?>
+
+                        <a href="nhan_su.php"
+                            style="color: #667eea; text-decoration: none; font-size: 14px; margin-left: 10px;">✖ Xóa bộ
+                            lọc</a>
+                    </div>
                 </div>
-            </div>
             <?php endif; ?>
 
             <div style="padding: 20px; border-bottom: 2px solid #f0f0f0;">
@@ -184,19 +211,19 @@ try {
                     <select name="phong_ban" class="form-control" style="width: auto;">
                         <option value="">Tất cả phòng ban</option>
                         <?php foreach ($phong_ban_list as $pb): ?>
-                        <option value="<?php echo $pb['id']; ?>"
-                            <?php echo $phong_ban == $pb['id'] ? 'selected' : ''; ?>>
-                            <?php echo $pb['ten_phong_ban']; ?>
-                        </option>
+                            <option value="<?php echo $pb['id']; ?>"
+                                <?php echo $phong_ban == $pb['id'] ? 'selected' : ''; ?>>
+                                <?php echo $pb['ten_phong_ban']; ?>
+                            </option>
                         <?php endforeach; ?>
                     </select>
 
                     <select name="chuc_vu" class="form-control" style="width: auto;">
                         <option value="">Tất cả chức vụ</option>
                         <?php foreach ($chuc_vu_list as $cv): ?>
-                        <option value="<?php echo $cv['id']; ?>" <?php echo $chuc_vu == $cv['id'] ? 'selected' : ''; ?>>
-                            <?php echo $cv['ten_chuc_vu']; ?>
-                        </option>
+                            <option value="<?php echo $cv['id']; ?>" <?php echo $chuc_vu == $cv['id'] ? 'selected' : ''; ?>>
+                                <?php echo $cv['ten_chuc_vu']; ?>
+                            </option>
                         <?php endforeach; ?>
                     </select>
 
@@ -226,56 +253,56 @@ try {
                 </thead>
                 <tbody>
                     <?php if (empty($nhan_su_list)): ?>
-                    <tr>
-                        <td colspan="8" style="text-align: center; padding: 40px;">
-                            <div style="font-size: 48px; margin-bottom: 15px;">📭</div>
-                            <div style="color: #666;">Chưa có nhân sự nào</div>
-                        </td>
-                    </tr>
+                        <tr>
+                            <td colspan="8" style="text-align: center; padding: 40px;">
+                                <div style="font-size: 48px; margin-bottom: 15px;">📭</div>
+                                <div style="color: #666;">Chưa có nhân sự nào</div>
+                            </td>
+                        </tr>
                     <?php else: ?>
-                    <?php foreach ($nhan_su_list as $ns): ?>
-                    <tr>
-                        <td><strong><?php echo $ns['ma_nhan_vien']; ?></strong></td>
-                        <td>
-                            <?php if ($ns['anh_dai_dien']): ?>
-                            <img src="<?php echo $ns['anh_dai_dien']; ?>"
-                                style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
-                            <?php else: ?>
-                            <div
-                                style="width: 40px; height: 40px; border-radius: 50%; background: #e0e0e0; display: flex; align-items: center; justify-content: center;">
-                                👤</div>
-                            <?php endif; ?>
-                        </td>
-                        <td>
-                            <div><strong><?php echo $ns['ho_ten']; ?></strong></div>
-                            <div style="font-size: 12px; color: #666;"><?php echo $ns['gioi_tinh']; ?></div>
-                        </td>
-                        <td><?php echo $ns['ten_chuc_vu'] ?? '-'; ?></td>
-                        <td><?php echo $ns['ten_phong_ban'] ?? '-'; ?></td>
-                        <td>
-                            <div style="font-size: 13px;">📧 <?php echo $ns['email'] ?? '-'; ?></div>
-                            <div style="font-size: 13px; margin-top: 4px;">📱 <?php echo $ns['so_dien_thoai'] ?? '-'; ?>
-                            </div>
-                        </td>
-                        <td>
-                            <?php
-                                $badge = 'badge-success';
-                                if ($ns['trang_thai_id'] == 2) $badge = 'badge-warning';
-                                if ($ns['trang_thai_id'] == 3) $badge = 'badge-danger';
-                            ?>
-                            <span class="badge <?php echo $badge; ?>"><?php echo $ns['ten_trang_thai']; ?></span>
-                        </td>
-                        <td>
-                            <div class="action-buttons">
-                                <a href="nhan_su_detail.php?id=<?php echo $ns['id']; ?>"
-                                    class="btn-icon btn-view">👁️</a>
-                                <a href="nhan_su_edit.php?id=<?php echo $ns['id']; ?>" class="btn-icon btn-edit">✏️</a>
-                                <button onclick="deleteNhanSu(<?php echo $ns['id']; ?>)"
-                                    class="btn-icon btn-delete">🗑️</button>
-                            </div>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
+                        <?php foreach ($nhan_su_list as $ns): ?>
+                            <tr>
+                                <td><strong><?php echo $ns['ma_nhan_vien']; ?></strong></td>
+                                <td>
+                                    <?php if ($ns['anh_dai_dien']): ?>
+                                        <img src="<?php echo $ns['anh_dai_dien']; ?>"
+                                            style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+                                    <?php else: ?>
+                                        <div
+                                            style="width: 40px; height: 40px; border-radius: 50%; background: #e0e0e0; display: flex; align-items: center; justify-content: center;">
+                                            👤</div>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <div><strong><?php echo $ns['ho_ten']; ?></strong></div>
+                                    <div style="font-size: 12px; color: #666;"><?php echo $ns['gioi_tinh']; ?></div>
+                                </td>
+                                <td><?php echo $ns['ten_chuc_vu'] ?? '-'; ?></td>
+                                <td><?php echo $ns['ten_phong_ban'] ?? '-'; ?></td>
+                                <td>
+                                    <div style="font-size: 13px;">📧 <?php echo $ns['email'] ?? '-'; ?></div>
+                                    <div style="font-size: 13px; margin-top: 4px;">📱 <?php echo $ns['so_dien_thoai'] ?? '-'; ?>
+                                    </div>
+                                </td>
+                                <td>
+                                    <?php
+                                    $badge = 'badge-success';
+                                    if ($ns['trang_thai_id'] == 2) $badge = 'badge-warning';
+                                    if ($ns['trang_thai_id'] == 3) $badge = 'badge-danger';
+                                    ?>
+                                    <span class="badge <?php echo $badge; ?>"><?php echo $ns['ten_trang_thai']; ?></span>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <a href="nhan_su_detail.php?id=<?php echo $ns['id']; ?>"
+                                            class="btn-icon btn-view">👁️</a>
+                                        <a href="nhan_su_edit.php?id=<?php echo $ns['id']; ?>" class="btn-icon btn-edit">✏️</a>
+                                        <button onclick="deleteNhanSu(<?php echo $ns['id']; ?>)"
+                                            class="btn-icon btn-delete">🗑️</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
                     <?php endif; ?>
                 </tbody>
             </table>
@@ -361,327 +388,327 @@ try {
     </div>
 
     <script>
-    function deleteNhanSu(id) {
-        if (confirm('Bạn có chắc muốn xóa nhân sự này?')) {
-            window.location.href = 'nhan_su.php?delete=' + id;
+        function deleteNhanSu(id) {
+            if (confirm('Bạn có chắc muốn xóa nhân sự này?')) {
+                window.location.href = 'nhan_su.php?delete=' + id;
+            }
         }
-    }
 
-    function showImportModal() {
-        document.getElementById('importModal').classList.add('active');
-    }
+        function showImportModal() {
+            document.getElementById('importModal').classList.add('active');
+        }
 
-    function closeImportModal() {
-        document.getElementById('importModal').classList.remove('active');
-        document.getElementById('importForm').reset();
-        document.getElementById('importResult').style.display = 'none';
-    }
+        function closeImportModal() {
+            document.getElementById('importModal').classList.remove('active');
+            document.getElementById('importForm').reset();
+            document.getElementById('importResult').style.display = 'none';
+        }
 
-    function showExportModal() {
-        document.getElementById('exportModal').classList.add('active');
-    }
+        function showExportModal() {
+            document.getElementById('exportModal').classList.add('active');
+        }
 
-    function closeExportModal() {
-        document.getElementById('exportModal').classList.remove('active');
-    }
+        function closeExportModal() {
+            document.getElementById('exportModal').classList.remove('active');
+        }
 
-    // Xử lý import
-    document.getElementById('importForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const formData = new FormData(this);
-        const importBtn = document.getElementById('importBtn');
-        const resultDiv = document.getElementById('importResult');
+        // Xử lý import
+        document.getElementById('importForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const importBtn = document.getElementById('importBtn');
+            const resultDiv = document.getElementById('importResult');
 
-        importBtn.disabled = true;
-        importBtn.textContent = '⏳ Đang import...';
-        resultDiv.style.display = 'none';
+            importBtn.disabled = true;
+            importBtn.textContent = '⏳ Đang import...';
+            resultDiv.style.display = 'none';
 
-        try {
-            const response = await fetch('import_excel.php', {
-                method: 'POST',
-                body: formData
-            });
-            const result = await response.json();
+            try {
+                const response = await fetch('import_excel.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
 
-            resultDiv.style.display = 'block';
-            if (result.success) {
-                resultDiv.style.background = '#d4edda';
-                resultDiv.style.color = '#155724';
-                let html = '✓ ' + result.message;
-                if (result.details.errors && result.details.errors.length > 0) {
-                    html +=
-                        '<br><br><strong>Chi tiết lỗi:</strong><ul style="margin: 10px 0; padding-left: 20px;">';
-                    result.details.errors.forEach(err => html += '<li>' + err + '</li>');
-                    html += '</ul>';
+                resultDiv.style.display = 'block';
+                if (result.success) {
+                    resultDiv.style.background = '#d4edda';
+                    resultDiv.style.color = '#155724';
+                    let html = '✓ ' + result.message;
+                    if (result.details.errors && result.details.errors.length > 0) {
+                        html +=
+                            '<br><br><strong>Chi tiết lỗi:</strong><ul style="margin: 10px 0; padding-left: 20px;">';
+                        result.details.errors.forEach(err => html += '<li>' + err + '</li>');
+                        html += '</ul>';
+                    }
+                    resultDiv.innerHTML = html;
+                    setTimeout(() => location.reload(), 2000);
+                } else {
+                    resultDiv.style.background = '#f8d7da';
+                    resultDiv.style.color = '#721c24';
+                    resultDiv.innerHTML = '✗ ' + result.message;
                 }
-                resultDiv.innerHTML = html;
-                setTimeout(() => location.reload(), 2000);
-            } else {
+            } catch (error) {
+                resultDiv.style.display = 'block';
                 resultDiv.style.background = '#f8d7da';
                 resultDiv.style.color = '#721c24';
-                resultDiv.innerHTML = '✗ ' + result.message;
+                resultDiv.innerHTML = '✗ Lỗi: ' + error.message;
+            } finally {
+                importBtn.disabled = false;
+                importBtn.textContent = '📤 Import ngay';
             }
-        } catch (error) {
-            resultDiv.style.display = 'block';
-            resultDiv.style.background = '#f8d7da';
-            resultDiv.style.color = '#721c24';
-            resultDiv.innerHTML = '✗ Lỗi: ' + error.message;
-        } finally {
-            importBtn.disabled = false;
-            importBtn.textContent = '📤 Import ngay';
-        }
-    });
-
-    setTimeout(() => {
-        document.querySelectorAll('.alert').forEach(el => el.style.display = 'none');
-    }, 3000);
-
-    // Tự động submit khi chọn select
-    document.querySelectorAll("select").forEach(function(sel) {
-        sel.addEventListener("change", function() {
-            this.form.submit();
         });
-    });
 
-    // Tự động submit khi đổi ngày
-    document.querySelectorAll("input[type='date']").forEach(function(input) {
-        input.addEventListener("change", function() {
-            this.form.submit();
-        });
-    });
+        setTimeout(() => {
+            document.querySelectorAll('.alert').forEach(el => el.style.display = 'none');
+        }, 3000);
 
-    // Bấm ENTER trong ô tìm kiếm -> submit form
-    const searchInput = document.querySelector("input[name='search']");
-    if (searchInput) {
-        searchInput.addEventListener("keypress", function(e) {
-            if (e.key === "Enter") {
-                e.preventDefault();
+        // Tự động submit khi chọn select
+        document.querySelectorAll("select").forEach(function(sel) {
+            sel.addEventListener("change", function() {
                 this.form.submit();
-            }
+            });
         });
-    }
+
+        // Tự động submit khi đổi ngày
+        document.querySelectorAll("input[type='date']").forEach(function(input) {
+            input.addEventListener("change", function() {
+                this.form.submit();
+            });
+        });
+
+        // Bấm ENTER trong ô tìm kiếm -> submit form
+        const searchInput = document.querySelector("input[name='search']");
+        if (searchInput) {
+            searchInput.addEventListener("keypress", function(e) {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    this.form.submit();
+                }
+            });
+        }
     </script>
 
     <style>
-    .alert {
-        padding: 15px;
-        margin-bottom: 20px;
-        border-radius: 8px;
-        font-size: 14px;
-    }
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
 
-    .alert-success {
-        background: #d4edda;
-        color: #155724;
-        border: 1px solid #c3e6cb;
-    }
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
 
-    .filter-badge {
-        display: inline-block;
-        padding: 6px 12px;
-        background: white;
-        border: 1px solid #667eea;
-        border-radius: 20px;
-        font-size: 13px;
-        color: #667eea;
-        font-weight: 500;
-    }
+        .filter-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            background: white;
+            border: 1px solid #667eea;
+            border-radius: 20px;
+            font-size: 13px;
+            color: #667eea;
+            font-weight: 500;
+        }
 
-    .table-header {
-        padding: 20px 25px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-bottom: 2px solid #f0f0f0;
-        flex-wrap: nowrap;
-        gap: 20px;
-    }
-
-    .table-header h2 {
-        font-size: 20px;
-        color: #333;
-        margin: 0;
-        white-space: nowrap;
-        flex-shrink: 0;
-    }
-
-    .table-actions {
-        display: flex;
-        gap: 10px;
-        flex-shrink: 0;
-        flex-wrap: nowrap;
-    }
-
-    .btn-import,
-    .btn-export {
-        padding: 10px 16px;
-        color: white;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s;
-        white-space: nowrap;
-    }
-
-    .btn-import {
-        background: #667eea;
-    }
-
-    .btn-import:hover {
-        background: #5568d3;
-        transform: translateY(-2px);
-    }
-
-    .btn-export {
-        background: #667eea;
-    }
-
-    .btn-export:hover {
-        background: #5568d3;
-        transform: translateY(-2px);
-    }
-
-    .import-steps {
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
-    }
-
-    .step {
-        display: flex;
-        gap: 15px;
-        align-items: flex-start;
-    }
-
-    .step-number {
-        width: 32px;
-        height: 32px;
-        background: #667eea;
-        color: white;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        flex-shrink: 0;
-    }
-
-    .step-content {
-        flex: 1;
-    }
-
-    .step-content h4 {
-        margin: 0 0 5px 0;
-        color: #333;
-    }
-
-    .step-content p {
-        margin: 0 0 10px 0;
-        color: #666;
-        font-size: 14px;
-    }
-
-    .btn-download {
-        display: inline-block;
-        padding: 8px 16px;
-        background: #f0f4ff;
-        color: #667eea;
-        border-radius: 6px;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s;
-    }
-
-    .btn-download:hover {
-        background: #667eea;
-        color: white;
-    }
-
-    .export-options {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-    }
-
-    .export-option {
-        display: flex;
-        align-items: center;
-        gap: 15px;
-        padding: 15px;
-        background: #f8f9fa;
-        border-radius: 10px;
-        text-decoration: none;
-        color: inherit;
-        transition: all 0.3s;
-        border: 2px solid transparent;
-    }
-
-    .export-option:hover {
-        background: #e9ecef;
-        border-color: #667eea;
-        transform: translateX(5px);
-    }
-
-    .export-icon {
-        width: 50px;
-        height: 50px;
-        background: white;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 24px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
-
-    .export-info {
-        flex: 1;
-    }
-
-    .export-info h4 {
-        font-size: 16px;
-        color: #333;
-        margin: 0 0 4px 0;
-    }
-
-    .export-info p {
-        font-size: 13px;
-        color: #666;
-        margin: 0;
-    }
-
-    .export-format {
-        padding: 5px 12px;
-        background: #667eea;
-        color: white;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: 600;
-    }
-
-    /* Responsive cho màn hình nhỏ */
-    @media (max-width: 768px) {
         .table-header {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 15px;
+            padding: 20px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #f0f0f0;
+            flex-wrap: nowrap;
+            gap: 20px;
+        }
+
+        .table-header h2 {
+            font-size: 20px;
+            color: #333;
+            margin: 0;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
 
         .table-actions {
-            width: 100%;
-            justify-content: flex-start;
+            display: flex;
+            gap: 10px;
+            flex-shrink: 0;
+            flex-wrap: nowrap;
         }
 
         .btn-import,
-        .btn-export,
-        .table-actions .btn-primary {
-            padding: 8px 12px;
-            font-size: 13px;
+        .btn-export {
+            padding: 10px 16px;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+            white-space: nowrap;
         }
-    }
+
+        .btn-import {
+            background: #667eea;
+        }
+
+        .btn-import:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        .btn-export {
+            background: #667eea;
+        }
+
+        .btn-export:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        .import-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .step {
+            display: flex;
+            gap: 15px;
+            align-items: flex-start;
+        }
+
+        .step-number {
+            width: 32px;
+            height: 32px;
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .step-content h4 {
+            margin: 0 0 5px 0;
+            color: #333;
+        }
+
+        .step-content p {
+            margin: 0 0 10px 0;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .btn-download {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #f0f4ff;
+            color: #667eea;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .btn-download:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .export-options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .export-option {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .export-option:hover {
+            background: #e9ecef;
+            border-color: #667eea;
+            transform: translateX(5px);
+        }
+
+        .export-icon {
+            width: 50px;
+            height: 50px;
+            background: white;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .export-info {
+            flex: 1;
+        }
+
+        .export-info h4 {
+            font-size: 16px;
+            color: #333;
+            margin: 0 0 4px 0;
+        }
+
+        .export-info p {
+            font-size: 13px;
+            color: #666;
+            margin: 0;
+        }
+
+        .export-format {
+            padding: 5px 12px;
+            background: #667eea;
+            color: white;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        /* Responsive cho màn hình nhỏ */
+        @media (max-width: 768px) {
+            .table-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+
+            .table-actions {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
+            .btn-import,
+            .btn-export,
+            .table-actions .btn-primary {
+                padding: 8px 12px;
+                font-size: 13px;
+            }
+        }
     </style>
 </body>
 

@@ -8,41 +8,41 @@ try {
     $filter_trang_thai = $_GET['trang_thai'] ?? '';
     $filter_date_from = $_GET['date_from'] ?? '';
     $filter_date_to = $_GET['date_to'] ?? '';
-    
+
     // Build WHERE clause
     $where_clauses = [];
     $params = [];
-    
+
     if ($filter_trang_thai !== '') {
         $where_clauses[] = "trang_thai_id = ?";
         $params[] = $filter_trang_thai;
     }
-    
+
     if ($filter_date_from) {
         $where_clauses[] = "ngay_vao_lam >= ?";
         $params[] = $filter_date_from;
     }
-    
+
     if ($filter_date_to) {
         $where_clauses[] = "ngay_vao_lam <= ?";
         $params[] = $filter_date_to;
     }
-    
+
     $where_sql = '';
     if (!empty($where_clauses)) {
         $where_sql = "WHERE " . implode(" AND ", $where_clauses);
     }
-    
+
     // Tổng số nhân sự (có filter)
     $sql = "SELECT COUNT(*) FROM nhan_su $where_sql";
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $tong_nhan_su = $stmt->fetchColumn();
-    
+
     // Tổng số phòng ban
     $stmt = $pdo->query("SELECT COUNT(*) FROM phong_ban");
     $tong_phong_ban = $stmt->fetchColumn();
-    
+
     // Nhân sự mới (tháng này) - có filter
     // Nhân sự mới theo khoảng ngày lọc
     $where_clauses_month = $where_clauses; // giữ filter hiện có
@@ -73,36 +73,36 @@ try {
     $nhan_su_moi = $stmt->fetchColumn();
 
 
-    
+
     // Sinh nhật trong tháng - có filter
     $where_clauses_bday = $where_clauses;
     $where_clauses_bday[] = "MONTH(ngay_sinh) = MONTH(CURRENT_DATE())";
     $where_sql_bday = "WHERE " . implode(" AND ", $where_clauses_bday);
-    
+
     $sql = "SELECT COUNT(*) FROM nhan_su $where_sql_bday";
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $sinh_nhat_thang = $stmt->fetchColumn();
-    
-        // Thống kê theo phòng ban - có filter
+
+    // Thống kê theo phòng ban - có filter
     $sql = "SELECT pb.ten_phong_ban, COUNT(ns.id) as so_luong
             FROM phong_ban pb
             LEFT JOIN nhan_su ns ON pb.id = ns.phong_ban_id";
-    
+
     if (!empty($where_clauses)) {
-        $sql .= " AND " . implode(" AND ", array_map(function($clause) {
+        $sql .= " AND " . implode(" AND ", array_map(function ($clause) {
             return "ns." . $clause;
         }, $where_clauses));
     }
-    
+
     $sql .= " GROUP BY pb.id, pb.ten_phong_ban
               ORDER BY so_luong DESC
               LIMIT 3";
-    
+
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $phong_ban_stats = $stmt->fetchAll();
-    
+
     // Thống kê giới tính
     $sql = "
         SELECT gioi_tinh, COUNT(*) as so_luong
@@ -114,7 +114,7 @@ try {
     $stmt->execute($params);
     $gioi_tinh_stats = $stmt->fetchAll();
 
-    
+
     // Thống kê chức vụ
     $sql = "
         SELECT cv.ten_chuc_vu, COUNT(ns.id) as so_luong
@@ -130,7 +130,7 @@ try {
     $stmt->execute($params);
     $chuc_vu_stats = $stmt->fetchAll();
 
-    
+
     // Thống kê loại hợp đồng
     $sql = "
         SELECT lhd.ten_loai, COUNT(ns.id) as so_luong
@@ -189,7 +189,6 @@ try {
             'so_luong_nghi' => isset($data_nghi[$m]) ? (int)$data_nghi[$m] : 0  // Dữ liệu nghỉ
         ];
     }
-    
 } catch (PDOException $e) {
     die("Lỗi: " . $e->getMessage());
 }
@@ -253,10 +252,10 @@ try {
         <!-- Thống kê tổng quan -->
         <div class="stats-grid">
             <a href="nhan_su/nhan_su.php?<?php
-                $params = $_GET;
-                $params['from_dashboard'] = '1';
-                echo http_build_query($params); 
-            ?>" class="stat-card stat-purple" style="text-decoration: none; color: inherit;">
+                                            $params = $_GET;
+                                            $params['from_dashboard'] = '1';
+                                            echo http_build_query($params);
+                                            ?>" class="stat-card stat-purple" style="text-decoration: none; color: inherit;">
                 <div class="stat-icon">👥</div>
                 <div class="stat-content">
                     <h3><?php echo $tong_nhan_su; ?></h3>
@@ -272,12 +271,23 @@ try {
                 </div>
             </div>
 
-            <a href="nhan_su/nhan_su.php?<?php 
-                $params = $_GET;
-                $params['month_added'] = date('Y-m');
-                $params['from_dashboard'] = '1';
-                echo http_build_query($params); 
-            ?>" class="stat-card stat-pink" style="text-decoration: none; color: inherit;">
+            <a href="nhan_su/nhan_su.php?<?php
+                                            $params = $_GET; // Lấy các filter hiện tại (trang thái, ngày...)
+                                            $params['from_dashboard'] = '1'; // Đánh dấu là từ dashboard qua
+
+                                            // --- LOGIC QUAN TRỌNG NHẤT ---
+                                            if (!empty($filter_date_from) || !empty($filter_date_to)) {
+                                                // TRƯỜNG HỢP 1: Đang lọc theo khoảng ngày
+                                                // -> Xóa month_added đi. Để qua bên kia nó lọc theo ngày (như vậy mới đủ số lượng)
+                                                if (isset($params['month_added'])) unset($params['month_added']);
+                                            } else {
+                                                // TRƯỜNG HỢP 2: Không chọn ngày nào cả
+                                                // -> Mặc định là xem nhân sự mới của THÁNG NAY
+                                                $params['month_added'] = date('Y-m');
+                                            }
+
+                                            echo http_build_query($params);
+                                            ?>" class="stat-card stat-pink" style="text-decoration: none; color: inherit;">
                 <div class="stat-icon">👤</div>
                 <div class="stat-content">
                     <h3><?php echo $nhan_su_moi; ?></h3>
@@ -285,12 +295,12 @@ try {
                 </div>
             </a>
 
-            <a href="nhan_su/nhan_su.php?<?php 
-                $params = $_GET;
-                $params['birthday_month'] = date('m');
-                $params['from_dashboard'] = '1';
-                echo http_build_query($params); 
-            ?>" class="stat-card stat-blue" style="text-decoration: none; color: inherit;">
+            <a href="nhan_su/nhan_su.php?<?php
+                                            $params = $_GET;
+                                            $params['birthday_month'] = date('m');
+                                            $params['from_dashboard'] = '1';
+                                            echo http_build_query($params);
+                                            ?>" class="stat-card stat-blue" style="text-decoration: none; color: inherit;">
                 <div class="stat-icon">🎂</div>
                 <div class="stat-content">
                     <h3><?php echo $sinh_nhat_thang; ?></h3>
@@ -306,9 +316,9 @@ try {
                 <canvas id="phongBanChart"></canvas>
                 <div class="chart-legend">
                     <?php foreach ($phong_ban_stats as $i => $pb): ?>
-                    <div class="legend-item"><span
-                            class="legend-number"><?php echo $i + 1; ?></span><span><?php echo $pb['ten_phong_ban']; ?></span>
-                    </div>
+                        <div class="legend-item"><span
+                                class="legend-number"><?php echo $i + 1; ?></span><span><?php echo $pb['ten_phong_ban']; ?></span>
+                        </div>
                     <?php endforeach; ?>
                 </div>
             </div>
@@ -318,8 +328,8 @@ try {
                     <select id="yearSelect" class="year-select"
                         onchange="window.location='index.php?year='+this.value;">
                         <?php for ($y = date('Y'); $y >= 2000; $y--): ?>
-                        <option value="<?php echo $y; ?>" <?php echo $y == $year ? 'selected' : ''; ?>><?php echo $y; ?>
-                        </option>
+                            <option value="<?php echo $y; ?>" <?php echo $y == $year ? 'selected' : ''; ?>><?php echo $y; ?>
+                            </option>
                         <?php endfor; ?>
                     </select>
                 </div>
@@ -335,11 +345,11 @@ try {
                 <div class="stats-list">
                     <?php $total = array_sum(array_column($gioi_tinh_stats, 'so_luong'));
                     foreach ($gioi_tinh_stats as $gt): ?>
-                    <div class="stats-item">
-                        <span><?php echo $gt['gioi_tinh']; ?></span>
-                        <span class="stats-value"><?php echo $gt['so_luong']; ?>
-                            (<?php echo $total > 0 ? round($gt['so_luong']/$total*100, 1) : 0; ?>%)</span>
-                    </div>
+                        <div class="stats-item">
+                            <span><?php echo $gt['gioi_tinh']; ?></span>
+                            <span class="stats-value"><?php echo $gt['so_luong']; ?>
+                                (<?php echo $total > 0 ? round($gt['so_luong'] / $total * 100, 1) : 0; ?>%)</span>
+                        </div>
                     <?php endforeach; ?>
                 </div>
             </div>
@@ -347,15 +357,15 @@ try {
                 <h3>Thống kê chức vụ</h3>
                 <div class="bar-chart-container">
                     <?php foreach ($chuc_vu_stats as $cv): ?>
-                    <div class="bar-item">
-                        <div class="bar-label"><?php echo $cv['ten_chuc_vu']; ?></div>
-                        <div class="bar-progress">
-                            <div class="bar-fill"
-                                style="width: <?php echo $tong_nhan_su > 0 ? ($cv['so_luong']/$tong_nhan_su*100) : 0; ?>%">
+                        <div class="bar-item">
+                            <div class="bar-label"><?php echo $cv['ten_chuc_vu']; ?></div>
+                            <div class="bar-progress">
+                                <div class="bar-fill"
+                                    style="width: <?php echo $tong_nhan_su > 0 ? ($cv['so_luong'] / $tong_nhan_su * 100) : 0; ?>%">
+                                </div>
                             </div>
+                            <div class="bar-value"><?php echo $cv['so_luong']; ?></div>
                         </div>
-                        <div class="bar-value"><?php echo $cv['so_luong']; ?></div>
-                    </div>
                     <?php endforeach; ?>
                 </div>
             </div>
@@ -363,15 +373,15 @@ try {
                 <h3>Thống kê loại hợp đồng</h3>
                 <div class="bar-chart-container">
                     <?php foreach ($hop_dong_stats as $hd): ?>
-                    <div class="bar-item">
-                        <div class="bar-label"><?php echo $hd['ten_loai']; ?></div>
-                        <div class="bar-progress">
-                            <div class="bar-fill bar-fill-purple"
-                                style="width: <?php echo $tong_nhan_su > 0 ? ($hd['so_luong']/$tong_nhan_su*100) : 0; ?>%">
+                        <div class="bar-item">
+                            <div class="bar-label"><?php echo $hd['ten_loai']; ?></div>
+                            <div class="bar-progress">
+                                <div class="bar-fill bar-fill-purple"
+                                    style="width: <?php echo $tong_nhan_su > 0 ? ($hd['so_luong'] / $tong_nhan_su * 100) : 0; ?>%">
+                                </div>
                             </div>
+                            <div class="bar-value"><?php echo $hd['so_luong']; ?></div>
                         </div>
-                        <div class="bar-value"><?php echo $hd['so_luong']; ?></div>
-                    </div>
                     <?php endforeach; ?>
                 </div>
             </div>
@@ -424,207 +434,207 @@ try {
     </div>
 
     <script>
-    // Biểu đồ phòng ban
-    new Chart(document.getElementById('phongBanChart'), {
-        type: 'bar',
-        data: {
-            labels: <?php echo json_encode(array_column($phong_ban_stats, 'ten_phong_ban')); ?>,
-            datasets: [{
-                data: <?php echo json_encode(array_column($phong_ban_stats, 'so_luong')); ?>,
-                backgroundColor: ['#667eea', '#764ba2', '#f093fb']
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    display: false
-                }
+        // Biểu đồ phòng ban
+        new Chart(document.getElementById('phongBanChart'), {
+            type: 'bar',
+            data: {
+                labels: <?php echo json_encode(array_column($phong_ban_stats, 'ten_phong_ban')); ?>,
+                datasets: [{
+                    data: <?php echo json_encode(array_column($phong_ban_stats, 'so_luong')); ?>,
+                    backgroundColor: ['#667eea', '#764ba2', '#f093fb']
+                }]
             },
-            scales: {
-                y: {
-                    beginAtZero: true
-                }
-            }
-        }
-    });
-
-    // Biểu đồ giới tính
-    new Chart(document.getElementById('gioiTinhChart'), {
-        type: 'doughnut',
-        data: {
-            labels: <?php echo json_encode(array_column($gioi_tinh_stats, 'gioi_tinh')); ?>,
-            datasets: [{
-                data: <?php echo json_encode(array_column($gioi_tinh_stats, 'so_luong')); ?>,
-                backgroundColor: ['#667eea', '#f093fb', '#4facfe']
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: 'bottom'
-                }
-            }
-        }
-    });
-
-    // Biểu đồ biến động nhân sự
-    new Chart(document.getElementById('bienDongChart'), {
-        type: 'line',
-        data: {
-            labels: <?php echo json_encode(array_column($nhan_su_theo_thang, 'thang')); ?>,
-            datasets: [{
-                    label: 'Nhân viên vào',
-                    // Chú ý: sửa thành so_luong_vao cho khớp với PHP
-                    data: <?php echo json_encode(array_column($nhan_su_theo_thang, 'so_luong_vao')); ?>,
-                    borderColor: '#667eea', // Màu xanh
-                    backgroundColor: 'rgba(102,126,234,0.1)',
-                    tension: 0.4
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
                 },
-                {
-                    // --- THÊM DATASET MỚI Ở ĐÂY ---
-                    label: 'Nhân viên nghỉ việc',
-                    // Lấy dữ liệu từ so_luong_nghi
-                    data: <?php echo json_encode(array_column($nhan_su_theo_thang, 'so_luong_nghi')); ?>,
-                    borderColor: '#ff6b6b', // Màu đỏ
-                    backgroundColor: 'rgba(255, 107, 107, 0.1)', // Màu nền đỏ nhạt
-                    tension: 0.4
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: 'bottom'
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        stepSize: 1 // Chỉ hiện số nguyên (người)
+                scales: {
+                    y: {
+                        beginAtZero: true
                     }
                 }
             }
+        });
+
+        // Biểu đồ giới tính
+        new Chart(document.getElementById('gioiTinhChart'), {
+            type: 'doughnut',
+            data: {
+                labels: <?php echo json_encode(array_column($gioi_tinh_stats, 'gioi_tinh')); ?>,
+                datasets: [{
+                    data: <?php echo json_encode(array_column($gioi_tinh_stats, 'so_luong')); ?>,
+                    backgroundColor: ['#667eea', '#f093fb', '#4facfe']
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+
+        // Biểu đồ biến động nhân sự
+        new Chart(document.getElementById('bienDongChart'), {
+            type: 'line',
+            data: {
+                labels: <?php echo json_encode(array_column($nhan_su_theo_thang, 'thang')); ?>,
+                datasets: [{
+                        label: 'Nhân viên vào',
+                        // Chú ý: sửa thành so_luong_vao cho khớp với PHP
+                        data: <?php echo json_encode(array_column($nhan_su_theo_thang, 'so_luong_vao')); ?>,
+                        borderColor: '#667eea', // Màu xanh
+                        backgroundColor: 'rgba(102,126,234,0.1)',
+                        tension: 0.4
+                    },
+                    {
+                        // --- THÊM DATASET MỚI Ở ĐÂY ---
+                        label: 'Nhân viên nghỉ việc',
+                        // Lấy dữ liệu từ so_luong_nghi
+                        data: <?php echo json_encode(array_column($nhan_su_theo_thang, 'so_luong_nghi')); ?>,
+                        borderColor: '#ff6b6b', // Màu đỏ
+                        backgroundColor: 'rgba(255, 107, 107, 0.1)', // Màu nền đỏ nhạt
+                        tension: 0.4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1 // Chỉ hiện số nguyên (người)
+                        }
+                    }
+                }
+            }
+        });
+
+        function showExportModal() {
+            document.getElementById('exportModal').classList.add('active');
         }
-    });
 
-    function showExportModal() {
-        document.getElementById('exportModal').classList.add('active');
-    }
-
-    function closeExportModal() {
-        document.getElementById('exportModal').classList.remove('active');
-    }
+        function closeExportModal() {
+            document.getElementById('exportModal').classList.remove('active');
+        }
     </script>
 
     <style>
-    .btn-export {
-        padding: 10px 20px;
-        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-        color: white;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: 600;
-        transition: all 0.3s;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
+        .btn-export {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
 
-    .btn-export:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
-    }
+        .btn-export:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
+        }
 
-    .export-options {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-    }
+        .export-options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
 
-    .export-option {
-        display: flex;
-        align-items: center;
-        gap: 15px;
-        padding: 15px;
-        background: #f8f9fa;
-        border-radius: 10px;
-        text-decoration: none;
-        color: inherit;
-        transition: all 0.3s;
-        border: 2px solid transparent;
-    }
+        .export-option {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
 
-    .export-option:hover {
-        background: #e9ecef;
-        border-color: #667eea;
-        transform: translateX(5px);
-    }
+        .export-option:hover {
+            background: #e9ecef;
+            border-color: #667eea;
+            transform: translateX(5px);
+        }
 
-    .export-option.export-all {
-        background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
-        border: 2px solid #667eea;
-    }
+        .export-option.export-all {
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+            border: 2px solid #667eea;
+        }
 
-    .export-icon {
-        width: 50px;
-        height: 50px;
-        background: white;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 24px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
+        .export-icon {
+            width: 50px;
+            height: 50px;
+            background: white;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
 
-    .export-info {
-        flex: 1;
-    }
+        .export-info {
+            flex: 1;
+        }
 
-    .export-info h4 {
-        font-size: 16px;
-        color: #333;
-        margin-bottom: 4px;
-    }
+        .export-info h4 {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 4px;
+        }
 
-    .export-info p {
-        font-size: 13px;
-        color: #666;
-    }
+        .export-info p {
+            font-size: 13px;
+            color: #666;
+        }
 
-    .export-format {
-        padding: 5px 12px;
-        background: #667eea;
-        color: white;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: 600;
-    }
+        .export-format {
+            padding: 5px 12px;
+            background: #667eea;
+            color: white;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
 
-    .chart-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 20px;
-    }
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
 
-    .chart-header h3 {
-        margin: 0;
-    }
+        .chart-header h3 {
+            margin: 0;
+        }
 
-    .year-select {
-        padding: 8px 15px;
-        border: 2px solid #e0e0e0;
-        border-radius: 6px;
-        font-size: 14px;
-        cursor: pointer;
-    }
+        .year-select {
+            padding: 8px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+        }
     </style>
 </body>
 
